@@ -1,0 +1,7 @@
+- Task vs Thread
+- ThreadPool
+- async/await Internals
+- Parallel.ForEach
+- Concurrent Collections
+- Memory
+- GC Basics

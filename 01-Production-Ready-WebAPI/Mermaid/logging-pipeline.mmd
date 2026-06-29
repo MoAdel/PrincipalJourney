@@ -1,0 +1,5 @@
+flowchart LR
+    App[ILogger calls] --> Providers[Console, App Insights, OpenTelemetry]
+    Providers --> Enrich[Scopes, correlation, user, tenant]
+    Enrich --> Sink[Central log store]
+    Sink --> Query[Queries, alerts, incident review]

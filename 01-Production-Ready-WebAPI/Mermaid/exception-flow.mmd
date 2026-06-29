@@ -1,0 +1,11 @@
+sequenceDiagram
+    participant Endpoint
+    participant Service
+    participant Handler as Exception Handler
+    participant Logger
+    participant Client
+    Endpoint->>Service: Execute use case
+    Service--xEndpoint: throws domain or infrastructure exception
+    Endpoint--xHandler: exception bubbles
+    Handler->>Logger: log with correlation id
+    Handler-->>Client: ProblemDetails response

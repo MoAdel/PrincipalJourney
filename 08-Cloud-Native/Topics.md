@@ -1,0 +1,6 @@
+- Azure Functions
+- App Configuration
+- Managed Identity
+- Azure Monitor
+- Key Vault
+- Deployment Slots

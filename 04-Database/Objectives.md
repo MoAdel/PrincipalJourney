@@ -1,0 +1,8 @@
+- Execution Plans
+- Indexes
+- Ranking Functions
+- Partitioning
+- EF Core Performance
+- Transactions
+- Isolation Levels
+- Deadlocks

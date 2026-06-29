@@ -1,0 +1,7 @@
+flowchart TB
+    Api[Presentation: ASP.NET Core API] --> Application[Application: Use Cases]
+    Infrastructure[Infrastructure: EF Core, HTTP, Azure] --> Application
+    Application --> Domain[Domain: Entities and Policies]
+    Api --> Contracts[Contracts: DTOs and ProblemDetails]
+    Contracts --> Application
+    Domain -. no outward dependencies .- Domain

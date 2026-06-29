@@ -1,0 +1,10 @@
+flowchart LR
+    Client --> Edge[Azure Front Door or API Management]
+    Edge --> Kestrel
+    Kestrel --> Middleware
+    Middleware --> Endpoint
+    Endpoint --> Application
+    Application --> Infrastructure
+    Infrastructure --> Dependencies[(SQL / Cache / Downstream APIs)]
+    Endpoint --> ProblemDetails
+    Endpoint --> Telemetry

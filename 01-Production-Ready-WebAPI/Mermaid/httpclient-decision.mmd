@@ -1,0 +1,8 @@
+flowchart TD
+    Start[Calling external HTTP service] --> Typed{One cohesive client abstraction?}
+    Typed -->|Yes| TypedClient[Typed HttpClient]
+    Typed -->|No| Named{Many endpoints sharing policy?}
+    Named -->|Yes| NamedClient[Named HttpClient]
+    Named -->|No| Generated{Contract-first API?}
+    Generated -->|Yes| GeneratedClient[Generated or Refit client]
+    Generated -->|No| TypedClient

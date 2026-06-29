@@ -1,0 +1,1 @@
+Document trade-offs, alternatives, and design decisions.

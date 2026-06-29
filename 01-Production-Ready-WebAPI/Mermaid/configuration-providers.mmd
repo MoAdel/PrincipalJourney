@@ -1,0 +1,8 @@
+flowchart TD
+    appsettings[appsettings.json] --> config[IConfiguration]
+    environment[Environment-specific JSON] --> config
+    secrets[User Secrets / Key Vault] --> config
+    envvars[Environment Variables] --> config
+    appconfig[Azure App Configuration] --> config
+    config --> options[Validated Options]
+    options --> services[Application Services]

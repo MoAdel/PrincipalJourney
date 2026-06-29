@@ -1,0 +1,8 @@
+flowchart TD
+    Start[Need cross-cutting behavior?] --> Whole{Needs whole HTTP pipeline?}
+    Whole -->|Yes| Middleware[Use middleware]
+    Whole -->|No| Mvc{Only MVC action concern?}
+    Mvc -->|Yes| Filter[Use filters]
+    Mvc -->|No| Endpoint{Endpoint metadata or minimal API?}
+    Endpoint -->|Yes| EndpointFilter[Use endpoint filters]
+    Endpoint -->|No| Service[Use application service or decorator]

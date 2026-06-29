@@ -1,0 +1,15 @@
+# Architecture Decision Record
+
+Title:
+Status: Proposed | Accepted | Superseded
+Date:
+Owner:
+
+Context:
+Decision:
+Consequences:
+Alternatives Considered:
+Operational Impact:
+Security Impact:
+Cost Impact:
+Review Trigger:

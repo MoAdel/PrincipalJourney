@@ -1,0 +1,8 @@
+flowchart TD
+    Start[Validate incoming data] --> Simple{Simple shape rules?}
+    Simple -->|Yes| Attributes[DataAnnotations]
+    Simple -->|No| Complex{Cross-field or async rules?}
+    Complex -->|Yes| Fluent[FluentValidation or explicit validator]
+    Complex -->|No| Domain{Business invariant?}
+    Domain -->|Yes| DomainModel[Enforce in domain model]
+    Domain -->|No| Attributes

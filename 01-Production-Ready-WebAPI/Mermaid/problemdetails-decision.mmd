@@ -1,0 +1,8 @@
+flowchart TD
+    Start[API can fail] --> Public{Public or partner API?}
+    Public -->|Yes| ProblemDetails[Use RFC 7807 ProblemDetails]
+    Public -->|No| Clients{Multiple clients or teams?}
+    Clients -->|Yes| ProblemDetails
+    Clients -->|No| Simple{Internal prototype?}
+    Simple -->|Yes| Minimal[Use consistent minimal envelope]
+    Simple -->|No| ProblemDetails

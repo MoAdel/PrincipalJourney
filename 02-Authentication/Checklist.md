@@ -1,0 +1,4 @@
+- JWT
+- Authorization
+- Refresh tokens concept
+- Secret management

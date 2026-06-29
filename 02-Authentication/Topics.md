@@ -1,0 +1,8 @@
+- JWT
+- OAuth2 Flows
+- OIDC
+- Claims
+- Policies
+- CORS
+- OWASP Top10
+- Azure Key Vault

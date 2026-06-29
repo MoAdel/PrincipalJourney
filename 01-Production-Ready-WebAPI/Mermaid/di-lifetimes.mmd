@@ -1,0 +1,6 @@
+flowchart LR
+    Root[Root ServiceProvider] --> Singleton[Singleton: application lifetime]
+    Root --> Scope[Request Scope]
+    Scope --> Scoped[Scoped: request lifetime]
+    Scope --> Transient[Transient: every resolve]
+    Singleton -. must not capture .-> Scoped

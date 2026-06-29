@@ -1,0 +1,16 @@
+sequenceDiagram
+    participant C as Client
+    participant K as Kestrel
+    participant M as Middleware Pipeline
+    participant R as Routing
+    participant A as Action Endpoint
+    participant S as Service Layer
+    C->>K: HTTP request
+    K->>M: HttpContext
+    M->>R: authenticated, correlated, logged
+    R->>A: route values and model binding
+    A->>S: command or query
+    S-->>A: result
+    A-->>M: IActionResult or IResult
+    M-->>K: response headers and body
+    K-->>C: HTTP response

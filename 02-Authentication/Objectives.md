@@ -1,0 +1,1 @@
+OAuth2, JWT, OpenID Connect, Authorization, Key Vault basics.

@@ -1,0 +1,4 @@
+- Why this technology?
+- Alternatives?
+- Trade-offs?
+- Production concerns?

@@ -1,0 +1,7 @@
+flowchart TD
+    Probe[Load balancer or Kubernetes probe] --> Live[/health/live]
+    Probe --> Ready[/health/ready]
+    Ready --> Sql[SQL dependency]
+    Ready --> Cache[Cache dependency]
+    Ready --> Bus[Message bus dependency]
+    Live --> Process[Process can serve requests]

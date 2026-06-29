@@ -1,0 +1,11 @@
+flowchart LR
+    Client[Enterprise API Consumers] --> Edge[Azure Front Door or API Management]
+    Edge --> Web[ASP.NET Core Web API]
+    Web --> App[Application Layer]
+    App --> Domain[Domain Model]
+    App --> Infra[Infrastructure Adapters]
+    Infra --> Sql[(Azure SQL or SQL Server)]
+    Infra --> Cache[(Redis Cache)]
+    Infra --> Bus[(Message Bus)]
+    Web --> Obs[OpenTelemetry and Logs]
+    Obs --> Monitor[Azure Monitor or App Insights]
