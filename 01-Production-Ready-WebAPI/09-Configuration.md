@@ -1,247 +1,674 @@
-# Configuration
+# 09 - Configuration
 
-## Purpose
+> "Configuration is not about storing values.
+>
+> It is about separating software from its environment."
 
-Model configuration as a controlled production dependency. This module assumes the reader already builds ASP.NET Core systems professionally. The goal is to sharpen engineering judgment: why a design exists, how it behaves under load, how it fails, and what evidence a principal engineer needs before launch.
+---
 
-> [!IMPORTANT]
-> The standard is not whether the API works on a developer machine. The standard is whether the design remains understandable, observable, secure, and operable when customers, incidents, and organizational pressure arrive.
+# Why Should a Principal Engineer Care?
 
-## Table of Contents
+Imagine you deploy exactly the same application to five different environments.
 
-- [Purpose](#purpose)
-- [Theory](#theory)
-- [Deep Dive](#deep-dive)
-- [How It Works Internally](#how-it-works-internally)
-- [Production Usage](#production-usage)
-- [Common Mistakes](#common-mistakes)
-- [Trade-offs](#trade-offs)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-- [Code Snippets](#code-snippets)
-- [Architecture Notes](#architecture-notes)
-- [Principal Thinking](#principal-thinking)
-- [Review Questions](#review-questions)
-- [References](#references)
-- [Summary](#summary)
+Developer Machine
 
-## Theory
+↓
 
-The production-ready Web API foundation is a set of architectural constraints and runtime behaviors, not a checklist of NuGet packages. A principal engineer treats each framework feature as a design decision with blast radius across security, operability, performance, cost, and long-term maintainability.
+Integration
 
-Core ideas in this module:
+↓
 
-- configuration hierarchy
-- environments
-- secrets
-- reload behavior
-- cloud overrides
+UAT
 
-A mature API design separates policy from detail. HTTP, persistence, messaging, cloud configuration, logging, and documentation are details that serve the business capability. They must be explicit, replaceable where necessary, and observable when they fail.
+↓
 
-## Deep Dive
+Staging
 
-| Concern | Principal-level question |
-|---|---|
-| configuration hierarchy | Runtime behavior, production failure mode, test evidence, and decision owner |
-| environments | Runtime behavior, production failure mode, test evidence, and decision owner |
-| secrets | Runtime behavior, production failure mode, test evidence, and decision owner |
-| reload behavior | Runtime behavior, production failure mode, test evidence, and decision owner |
-| cloud overrides | Runtime behavior, production failure mode, test evidence, and decision owner |
+↓
 
-Deep understanding requires following the request from socket acceptance through endpoint execution, dependency resolution, validation, exception translation, response writing, logging, metrics, and cloud platform feedback. The interesting engineering work happens at boundaries: when dependencies are slow, configuration is wrong, clients misuse the API, or the team needs to evolve the contract without breaking revenue-generating consumers.
+Production
 
-Performance impact is rarely isolated. A small allocation in middleware can multiply by every request. A missing timeout can exhaust threads. A verbose log property can create significant Application Insights or Log Analytics cost. A poorly scoped dependency can leak memory or corrupt tenant state. A vague error contract can turn every client integration into custom support work.
+Should you compile the application five times?
 
-## How It Works Internally
+Of course not.
 
-ASP.NET Core builds a host, loads configuration providers in order, constructs an IServiceProvider, starts Kestrel, and executes requests through a composed middleware pipeline. Endpoint routing selects metadata and delegates. Model binding and validation prepare inputs. Application services execute use cases. Infrastructure adapters talk to databases and remote services. Result execution serializes responses and emits telemetry.
+The software is the same.
 
-Internal mechanics to reason about:
+Only the environment changes.
 
-- The dependency injection container resolves constructor graphs and enforces lifetimes only when scope validation is enabled.
-- Middleware executes in registration order on the way in and reverse order on the way out.
-- Async request handling uses the .NET thread pool; blocking work can starve unrelated requests.
-- Configuration values are layered; later providers override earlier providers.
-- Logging providers receive structured events, scopes, categories, and levels; downstream sinks decide storage and cost.
-- Exceptions are expensive control-flow mechanisms and should represent unexpected failure, not ordinary business decisions.
+Configuration exists to separate
 
-```mermaid
-flowchart TD
-    Json[appsettings.json] --> Builder
-    EnvJson[appsettings.Production.json] --> Builder
-    UserSecrets[User Secrets] --> Builder
-    EnvVars[Environment Variables] --> Builder
-    KeyVault[Azure Key Vault] --> Builder
-    AppConfig[Azure App Configuration] --> Builder
-    Builder --> IConfiguration
-    IConfiguration --> Options
+**Application**
+
+from
+
+**Environment**
+
+---
+
+# Production Story
+
+Friday.
+
+6:30 PM.
+
+The Production deployment succeeds.
+
+Ten minutes later...
+
+Every API returns
+
+```
+500 Internal Server Error
 ```
 
-## Production Usage
+Database is healthy.
 
-Use this capability as part of the launch foundation. Define the production contract, add tests around externally visible behavior, record the operational assumptions, and make the behavior visible through telemetry. Production usage means the team knows how the feature behaves during deploys, scale-out, dependency failure, secret rotation, and partial regional outage.
+Azure is healthy.
 
-Operational checklist:
+Code hasn't changed.
 
-- Define the owner and review cadence.
-- Document environment-specific behavior.
-- Add observable signals: log events, metrics, traces, health checks, or dashboards.
-- Add failure-mode tests where the blast radius is high.
-- Record rollout and rollback instructions.
-- Estimate cost impact before high-volume launch.
+The problem?
 
-## Common Mistakes
+Someone accidentally deployed
 
-| Mistake | Why it hurts in production | Better approach |
-|---|---|---|
-| Treating framework defaults as architecture | Defaults optimize for broad usability, not your launch risk | Make explicit decisions and document them |
-| Mixing domain logic with transport code | Makes tests brittle and contract evolution risky | Keep use cases independent of HTTP details |
-| Ignoring cancellation and timeouts | Slow dependencies can consume threads and sockets | Propagate CancellationToken and bound every call |
-| Logging unbounded payloads | Increases cost and may leak sensitive data | Log identifiers, states, and safe dimensions |
-| Adding abstractions for style only | Creates indirection without resilience | Add abstractions where they protect policy or enable tests |
-
-## Trade-offs
-
-| Decision pressure | Optimize for | Cost |
-|---|---|---|
-| Fast launch | Simpler architecture and fewer moving parts | Less isolation if requirements grow quickly |
-| Enterprise contract stability | Versioning, compatibility tests, documentation | More governance and slower breaking changes |
-| Deep observability | Faster incident response | Storage cost and data classification work |
-| Strong validation | Safer inputs and clearer client errors | More rules to maintain and test |
-| Cloud-native behavior | Better scaling and operations | Requires platform knowledge and automated verification |
-
-```mermaid
-flowchart TD
-    A[Choose approach] --> B{Is it a stable public contract?}
-    B -->|Yes| C[Optimize for compatibility and explicit governance]
-    B -->|No| D[Optimize for simplicity and fast feedback]
-    C --> E[Record decision]
-    D --> E
-    E --> F[Verify with tests and telemetry]
+```
+appsettings.Development.json
 ```
 
-## Best Practices
+to Production.
 
-- Make external contracts explicit: OpenAPI, status codes, ProblemDetails, versioning, pagination, and error semantics.
-- Prefer simple architectural boundaries with strong tests over elaborate layering with weak ownership.
-- Design for failure first: dependency timeout, invalid configuration, expired secret, partial outage, and noisy client.
-- Use structured logs and stable dimensions; avoid high-cardinality values unless necessary.
-- Validate configuration on startup for critical settings.
-- Keep middleware order intentional and reviewed.
-- Define health checks for orchestrators, not for human curiosity alone.
-- Use architecture decision records for choices that affect multiple teams or production operations.
+The application connected to a database that doesn't exist.
 
-## Examples
+Nothing was wrong with the code.
 
-### Architecture Decision Record Excerpt
+Everything was wrong with the configuration.
 
-| Field | Example |
-|---|---|
-| Decision | Use typed HttpClient for cohesive downstream APIs |
-| Status | Accepted |
-| Context | The API calls a billing service on the critical request path |
-| Consequence | Better testability and encapsulated resilience policy; more classes to own |
-| Review trigger | New downstream endpoint, latency SLO change, or incident involving billing |
+---
 
-### Production Review Evidence
+# The Problem Before Configuration
 
-- Unit tests for domain and application rules.
-- Integration tests for HTTP contract and middleware behavior.
-- Load test showing latency, CPU, memory, and dependency behavior at target concurrency.
-- Dashboard covering request rate, error rate, duration, saturation, dependency calls, and log volume.
-- Runbook explaining rollback, configuration ownership, and incident triage.
-
-
-## Code Snippets
+Imagine this code.
 
 ```csharp
-public sealed class CreateOrderHandler
+public class ProductRepository
 {
-    private readonly IOrderRepository _orders;
-    private readonly TimeProvider _clock;
-
-    public CreateOrderHandler(IOrderRepository orders, TimeProvider clock)
-    {
-        _orders = orders;
-        _clock = clock;
-    }
-
-    public async Task<Result<OrderDto>> HandleAsync(CreateOrderCommand command, CancellationToken cancellationToken)
-    {
-        var order = Order.Create(command.CustomerId, command.Lines, _clock.GetUtcNow());
-        await _orders.SaveAsync(order, cancellationToken);
-        return Result.Success(OrderDto.From(order));
-    }
+    private const string ConnectionString =
+        "Server=SQL01;Database=Sales;...";
 }
 ```
 
-## Architecture Notes
+Looks simple.
 
-The architecture should keep decisions visible. A principal engineer should be able to point to the code and answer: where does policy live, where do side effects happen, where does the public contract get shaped, and where will the team look during an incident?
+Until...
 
-Recommended baseline:
+The application moves to Azure.
 
-```text
-src/
-  Api/              HTTP, middleware, authentication, OpenAPI, controllers/endpoints
-  Application/      Use cases, ports, validation orchestration, DTOs
-  Domain/           Entities, value objects, invariants, domain services
-  Infrastructure/   EF Core, external HTTP clients, cloud adapters, logging adapters
-  Contracts/        Public request/response contracts if shared deliberately
-tests/
-  UnitTests/
-  IntegrationTests/
-  ArchitectureTests/
+Now SQL Server changes.
+
+Connection String changes.
+
+Every deployment requires code changes.
+
+Worse,
+
+someone commits production credentials into Git.
+
+Now the problem isn't technical.
+
+It's a security incident.
+
+---
+
+# The Principle
+
+Ask yourself:
+
+> "Is this value part of my business logic?"
+
+If the answer is **No**
+
+it probably belongs in Configuration.
+
+Examples
+
+Configuration
+
+✔ Connection Strings
+
+✔ API Keys
+
+✔ Storage Accounts
+
+✔ SMTP Servers
+
+✔ Feature Flags
+
+✔ Retry Counts
+
+✔ Timeout Values
+
+✔ Cache Duration
+
+Business Logic
+
+✘ VAT Percentage Calculation
+
+✘ Discount Rules
+
+✘ Order Status Workflow
+
+Those belong to the Domain.
+
+---
+
+# Configuration is a Hierarchy
+
+ASP.NET Core doesn't read
+
+```
+appsettings.json
 ```
 
-Architecture notes for this module:
+It builds a **Configuration Tree**.
 
-- Runtime behavior must be knowable from code and docs.
-- Security boundaries must be enforced close to the request boundary and repeated in domain rules where invariants require it.
-- Maintainability comes from fewer hidden dependencies and clear ownership.
-- Scalability comes from bounded work, async I/O, stateless request handling, and thoughtful dependency limits.
-- Cost control is an architecture concern when telemetry, retries, and cloud resources scale with traffic.
+Think of it like this:
 
-## Principal Thinking
+```
+Configuration Root
 
-A principal engineer asks different questions from an implementation owner:
+├── ConnectionStrings
+│      └── Default
+│
+├── Azure
+│      └── Storage
+│
+├── Logging
+│      └── LogLevel
+│
+└── Features
+       └── EnablePayments
+```
 
-- Why this approach, and what evidence would change our mind?
-- Why not the simpler built-in default?
-- Why not a more sophisticated platform pattern?
-- When should we avoid this design?
-- What failure mode does this design make easier to detect?
-- What failure mode does it hide?
-- How would Microsoft implement this for a broad Azure customer base?
-- How would Amazon implement this for high-scale, operationally strict service ownership?
+Every provider contributes values.
 
-Microsoft-style implementation usually emphasizes documented contracts, platform integration, secure defaults, compatibility, and tooling support. Amazon-style implementation usually emphasizes service ownership, operational metrics, blast-radius reduction, explicit runbooks, and continuous correction through incidents. A strong principal engineer can combine both instincts without cargo-culting either company.
+The application reads only one unified tree.
 
-## Review Questions
+---
 
-1. What production failure is most likely if this area is implemented casually?
-2. Which behavior is part of the public contract, and how is it tested?
-3. Which runtime cost grows with request volume?
-4. Which cloud platform feature changes the design assumption?
-5. How would you explain the trade-off to a CTO, an SRE, and a feature team?
-6. What would cause you to revisit this decision in six months?
+# Configuration Providers
 
-## References
+ASP.NET Core supports multiple sources.
 
-- [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/)
-- [ASP.NET Core fundamentals](https://learn.microsoft.com/aspnet/core/fundamentals/)
-- [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
-- [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/)
-- [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/)
-- Robert C. Martin, Clean Architecture
-- Mark Seemann, Dependency Injection Principles, Practices, and Patterns
-- Jeffrey Richter, CLR via C#
-- Andrew Lock, ASP.NET Core in Action
-- Martin Kleppmann, Designing Data-Intensive Applications
-- Martin Fowler architecture essays
-- Nick Chapsas, advanced .NET and ASP.NET Core content
+Examples
 
-## Summary
+```
+appsettings.json
 
-Configuration is part of the launch foundation for an enterprise-grade public API. The principal-level expectation is not memorizing framework APIs; it is understanding runtime behavior, making trade-offs explicit, proving the design with tests and telemetry, and leaving behind a system that other engineers can operate confidently.
+↓
+
+appsettings.Environment.json
+
+↓
+
+User Secrets
+
+↓
+
+Environment Variables
+
+↓
+
+Azure Key Vault
+
+↓
+
+Command Line
+
+↓
+
+Custom Providers
+```
+
+Notice something important.
+
+The application does not know where the value came from.
+
+Only IConfiguration knows.
+
+---
+
+# Provider Precedence
+
+Providers are evaluated in order.
+
+Later providers override earlier ones.
+
+Example
+
+```
+appsettings.json
+
+↓
+
+Environment Variables
+
+↓
+
+Command Line
+```
+
+Suppose
+
+appsettings.json
+
+```
+Timeout = 30
+```
+
+Environment Variable
+
+```
+Timeout = 60
+```
+
+The application receives
+
+```
+60
+```
+
+No code changes.
+
+No recompilation.
+
+---
+
+# IConfiguration
+
+At runtime,
+
+ASP.NET Core builds one object.
+
+```
+ConfigurationRoot
+```
+
+Internally,
+
+it contains
+
+```
+Provider 1
+
+Provider 2
+
+Provider 3
+
+Provider 4
+```
+
+When you ask
+
+```csharp
+_configuration["Timeout"]
+```
+
+ASP.NET Core walks the providers
+
+from highest priority
+
+to lowest priority.
+
+The first matching value wins.
+
+---
+
+# Configuration vs Options
+
+Many developers inject
+
+```csharp
+IConfiguration
+```
+
+everywhere.
+
+This is usually a design smell.
+
+Business Services should not know
+
+where configuration lives.
+
+Instead
+
+bind configuration
+
+once
+
+into strongly typed objects.
+
+```
+PaymentSettings
+
+StorageSettings
+
+EmailSettings
+
+RetrySettings
+```
+
+Now services depend on
+
+business configuration,
+
+not configuration infrastructure.
+
+---
+
+# Strongly Typed Configuration
+
+Instead of
+
+```csharp
+_configuration["Azure:Storage:Container"]
+```
+
+Prefer
+
+```csharp
+StorageOptions.Container
+```
+
+Advantages
+
+✔ Compile-time safety
+
+✔ IntelliSense
+
+✔ Easier testing
+
+✔ Refactoring support
+
+✔ Validation
+
+✔ Clear documentation
+
+Strings become models.
+
+---
+
+# Environment Variables
+
+Cloud-native applications prefer
+
+Environment Variables.
+
+Why?
+
+Because infrastructure owns configuration.
+
+Not developers.
+
+Example
+
+```
+ASPNETCORE_ENVIRONMENT
+
+ConnectionStrings__Default
+
+Azure__Storage__Account
+```
+
+Notice
+
+```
+__
+```
+
+represents
+
+```
+:
+```
+
+inside configuration paths.
+
+---
+
+# Secrets
+
+Never store
+
+```
+Passwords
+
+API Keys
+
+Certificates
+
+Tokens
+```
+
+inside
+
+```
+appsettings.json
+```
+
+Production secrets belong in
+
+- Azure Key Vault
+- AWS Secrets Manager
+- HashiCorp Vault
+
+Configuration and Secret Management are related,
+
+but they are not the same concern.
+
+---
+
+# Feature Flags
+
+Suppose Marketing wants to enable a new checkout experience.
+
+Do you redeploy?
+
+No.
+
+Configuration changes.
+
+Application behavior changes.
+
+Feature Flags are configuration,
+
+not business rules.
+
+---
+
+# Reload on Change
+
+JSON configuration supports
+
+```
+reloadOnChange
+```
+
+The file changes.
+
+Configuration reloads.
+
+Depending on how the application consumes configuration,
+
+the new values may become available immediately.
+
+This is one reason the Options Pattern exists.
+
+(We'll explore that in the next chapter.)
+
+---
+
+# Common Mistakes
+
+❌ Inject IConfiguration into every service.
+
+❌ Store business rules in configuration.
+
+❌ Store secrets in Git.
+
+❌ Duplicate configuration values.
+
+❌ Use magic strings throughout the codebase.
+
+❌ Assume appsettings.json is the only provider.
+
+---
+
+# Configuration in Azure
+
+Typical Production Flow
+
+```
+Application
+
+↓
+
+Azure App Configuration (optional)
+
+↓
+
+Azure Key Vault
+
+↓
+
+Environment Variables
+
+↓
+
+appsettings.json
+```
+
+The farther a value is from source code,
+
+the easier it is to change without redeployment.
+
+---
+
+# Production Incident
+
+A team stores
+
+```
+PaymentProvider = Stripe
+```
+
+inside configuration.
+
+Later,
+
+Finance requests:
+
+Premium customers use Stripe.
+
+Enterprise customers use Adyen.
+
+Now payment selection depends on customer type.
+
+That is no longer configuration.
+
+It is business logic.
+
+Moving business rules into configuration made the system harder to understand.
+
+---
+
+# Design Guidelines
+
+Ask these questions before adding a new configuration value.
+
+Does it change between environments?
+
+↓
+
+Configuration.
+
+---
+
+Does Operations own it?
+
+↓
+
+Configuration.
+
+---
+
+Does the business own it?
+
+↓
+
+Probably Domain.
+
+---
+
+Will changing it require redeployment?
+
+↓
+
+Maybe it should be configuration instead.
+
+---
+
+# Principal Thinking
+
+Junior Engineer:
+
+"Where should I put the connection string?"
+
+Senior Engineer:
+
+"Should this value come from IConfiguration?"
+
+Principal Engineer:
+
+"Who owns this decision—the business, the application, or the infrastructure?"
+
+Ownership determines architecture.
+
+Not convenience.
+
+---
+
+# Architecture Insight
+
+Configuration is an Infrastructure concern.
+
+Business logic should not know
+
+whether values came from:
+
+- JSON
+- Azure
+- Environment Variables
+- Key Vault
+
+Business code consumes **intent**,
+
+not **configuration providers**.
+
+That separation keeps the application portable.
+
+---
+
+# Self Assessment
+
+You have mastered this chapter if you can explain:
+
+- Why Configuration is an architectural concern.
+- Why appsettings.json is only one provider.
+- How provider precedence works.
+- Why IConfiguration should rarely leave the composition root.
+- Why strongly typed options are preferable.
+- Which values belong in configuration and which belong in the Domain.
+- How cloud-native applications manage configuration differently from local development.
+
+If you can design a configuration strategy for a multi-environment cloud application without coupling business logic to infrastructure, you've moved beyond reading configuration—you've started treating it as part of the system architecture.

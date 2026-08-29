@@ -1,247 +1,539 @@
 # Solution Architecture
 
-## Purpose
+> Challenge 01
+>
+> Architecture Decision Record (ADR-001)
 
-Design the platform foundation and identify major runtime boundaries. This module assumes the reader already builds ASP.NET Core systems professionally. The goal is to sharpen engineering judgment: why a design exists, how it behaves under load, how it fails, and what evidence a principal engineer needs before launch.
+---
 
-> [!IMPORTANT]
-> The standard is not whether the API works on a developer machine. The standard is whether the design remains understandable, observable, secure, and operable when customers, incidents, and organizational pressure arrive.
+# Purpose
 
-## Table of Contents
+This document records the architectural decisions made before writing the first line of production code.
 
-- [Purpose](#purpose)
-- [Theory](#theory)
-- [Deep Dive](#deep-dive)
-- [How It Works Internally](#how-it-works-internally)
-- [Production Usage](#production-usage)
-- [Common Mistakes](#common-mistakes)
-- [Trade-offs](#trade-offs)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-- [Code Snippets](#code-snippets)
-- [Architecture Notes](#architecture-notes)
-- [Principal Thinking](#principal-thinking)
-- [Review Questions](#review-questions)
-- [References](#references)
-- [Summary](#summary)
+The purpose is **not** to prove that one architecture is universally superior.
 
-## Theory
+The purpose is to explain why a particular architecture is the most appropriate solution **for this specific business context**.
 
-The production-ready Web API foundation is a set of architectural constraints and runtime behaviors, not a checklist of NuGet packages. A principal engineer treats each framework feature as a design decision with blast radius across security, operability, performance, cost, and long-term maintainability.
+Architecture is always context-dependent.
 
-Core ideas in this module:
+---
 
-- logical architecture
-- deployment architecture
-- request flow
-- cross-cutting concerns
-- cloud readiness
+# Problem Statement
 
-A mature API design separates policy from detail. HTTP, persistence, messaging, cloud configuration, logging, and documentation are details that serve the business capability. They must be explicit, replaceable where necessary, and observable when they fail.
+Nova Commerce is preparing to launch Version 1 of its retail platform.
 
-## Deep Dive
+The company expects:
 
-| Concern | Principal-level question |
-|---|---|
-| logical architecture | Runtime behavior, production failure mode, test evidence, and decision owner |
-| deployment architecture | Runtime behavior, production failure mode, test evidence, and decision owner |
-| request flow | Runtime behavior, production failure mode, test evidence, and decision owner |
-| cross-cutting concerns | Runtime behavior, production failure mode, test evidence, and decision owner |
-| cloud readiness | Runtime behavior, production failure mode, test evidence, and decision owner |
+- Rapid feature development.
+- A growing engineering team.
+- Long-term maintainability.
+- Cloud deployment.
+- Increasing business complexity.
 
-Deep understanding requires following the request from socket acceptance through endpoint execution, dependency resolution, validation, exception translation, response writing, logging, metrics, and cloud platform feedback. The interesting engineering work happens at boundaries: when dependencies are slow, configuration is wrong, clients misuse the API, or the team needs to evolve the contract without breaking revenue-generating consumers.
+The architecture chosen today should reduce future cost rather than optimize only for today's simplicity.
 
-Performance impact is rarely isolated. A small allocation in middleware can multiply by every request. A missing timeout can exhaust threads. A verbose log property can create significant Application Insights or Log Analytics cost. A poorly scoped dependency can leak memory or corrupt tenant state. A vague error contract can turn every client integration into custom support work.
+---
 
-## How It Works Internally
+# Decision Drivers
 
-ASP.NET Core builds a host, loads configuration providers in order, constructs an IServiceProvider, starts Kestrel, and executes requests through a composed middleware pipeline. Endpoint routing selects metadata and delegates. Model binding and validation prepare inputs. Application services execute use cases. Infrastructure adapters talk to databases and remote services. Result execution serializes responses and emits telemetry.
+Every architectural decision is evaluated against the following priorities.
 
-Internal mechanics to reason about:
+| Driver | Priority | Why it matters |
+|---------|----------|----------------|
+| Maintainability | ⭐⭐⭐⭐⭐ | The project will live for years. |
+| Simplicity | ⭐⭐⭐⭐⭐ | Complexity slows teams more than computers. |
+| Testability | ⭐⭐⭐⭐⭐ | Business rules must be independently testable. |
+| Flexibility | ⭐⭐⭐⭐ | Business requirements will evolve. |
+| Performance | ⭐⭐⭐⭐ | Must support growth without premature optimization. |
+| Security | ⭐⭐⭐⭐ | Security cannot depend on developer discipline. |
+| Developer Experience | ⭐⭐⭐⭐ | Consistency reduces onboarding time. |
 
-- The dependency injection container resolves constructor graphs and enforces lifetimes only when scope validation is enabled.
-- Middleware executes in registration order on the way in and reverse order on the way out.
-- Async request handling uses the .NET thread pool; blocking work can starve unrelated requests.
-- Configuration values are layered; later providers override earlier providers.
-- Logging providers receive structured events, scopes, categories, and levels; downstream sinks decide storage and cost.
-- Exceptions are expensive control-flow mechanisms and should represent unexpected failure, not ordinary business decisions.
+---
 
-```mermaid
-flowchart TD
-    API[API Layer] --> Application
-    Application --> Domain
-    Infrastructure --> Application
-    API --> Infrastructure
-    Tests --> Application
-    Tests --> API
-    Domain -. no dependency .-> API
-    Domain -. no dependency .-> Infrastructure
+# Candidate Architectures
+
+Before selecting an architecture, we evaluate realistic alternatives.
+
+---
+
+# Option A — Traditional Layered Architecture
+
+```
+Controller
+
+↓
+
+Service
+
+↓
+
+Repository
+
+↓
+
+Database
 ```
 
-## Production Usage
+Advantages
 
-Use this capability as part of the launch foundation. Define the production contract, add tests around externally visible behavior, record the operational assumptions, and make the behavior visible through telemetry. Production usage means the team knows how the feature behaves during deploys, scale-out, dependency failure, secret rotation, and partial regional outage.
+- Easy to understand.
+- Fast to start.
+- Familiar to most developers.
 
-Operational checklist:
+Disadvantages
 
-- Define the owner and review cadence.
-- Document environment-specific behavior.
-- Add observable signals: log events, metrics, traces, health checks, or dashboards.
-- Add failure-mode tests where the blast radius is high.
-- Record rollout and rollback instructions.
-- Estimate cost impact before high-volume launch.
+- Business logic often leaks across layers.
+- Tight coupling.
+- Difficult testing.
+- Large services over time.
+- Repository pattern frequently becomes an unnecessary abstraction.
 
-## Common Mistakes
+Decision
 
-| Mistake | Why it hurts in production | Better approach |
-|---|---|---|
-| Treating framework defaults as architecture | Defaults optimize for broad usability, not your launch risk | Make explicit decisions and document them |
-| Mixing domain logic with transport code | Makes tests brittle and contract evolution risky | Keep use cases independent of HTTP details |
-| Ignoring cancellation and timeouts | Slow dependencies can consume threads and sockets | Propagate CancellationToken and bound every call |
-| Logging unbounded payloads | Increases cost and may leak sensitive data | Log identifiers, states, and safe dimensions |
-| Adding abstractions for style only | Creates indirection without resilience | Add abstractions where they protect policy or enable tests |
+Suitable for small applications.
 
-## Trade-offs
+Not ideal for a platform expected to evolve for years.
 
-| Decision pressure | Optimize for | Cost |
-|---|---|---|
-| Fast launch | Simpler architecture and fewer moving parts | Less isolation if requirements grow quickly |
-| Enterprise contract stability | Versioning, compatibility tests, documentation | More governance and slower breaking changes |
-| Deep observability | Faster incident response | Storage cost and data classification work |
-| Strong validation | Safer inputs and clearer client errors | More rules to maintain and test |
-| Cloud-native behavior | Better scaling and operations | Requires platform knowledge and automated verification |
+---
 
-```mermaid
-flowchart TD
-    A[Choose approach] --> B{Is it a stable public contract?}
-    B -->|Yes| C[Optimize for compatibility and explicit governance]
-    B -->|No| D[Optimize for simplicity and fast feedback]
-    C --> E[Record decision]
-    D --> E
-    E --> F[Verify with tests and telemetry]
+# Option B — Clean Architecture
+
+```
+Presentation
+
+↓
+
+Application
+
+↓
+
+Domain
+
+↓
+
+Infrastructure
 ```
 
-## Best Practices
+Advantages
 
-- Make external contracts explicit: OpenAPI, status codes, ProblemDetails, versioning, pagination, and error semantics.
-- Prefer simple architectural boundaries with strong tests over elaborate layering with weak ownership.
-- Design for failure first: dependency timeout, invalid configuration, expired secret, partial outage, and noisy client.
-- Use structured logs and stable dimensions; avoid high-cardinality values unless necessary.
-- Validate configuration on startup for critical settings.
-- Keep middleware order intentional and reviewed.
-- Define health checks for orchestrators, not for human curiosity alone.
-- Use architecture decision records for choices that affect multiple teams or production operations.
+- Business rules become framework independent.
+- High testability.
+- Excellent separation of concerns.
+- Infrastructure can evolve independently.
+- Easy onboarding.
 
-## Examples
+Disadvantages
 
-### Architecture Decision Record Excerpt
+- More projects.
+- More abstractions.
+- Slightly higher initial complexity.
 
-| Field | Example |
-|---|---|
-| Decision | Use typed HttpClient for cohesive downstream APIs |
-| Status | Accepted |
-| Context | The API calls a billing service on the critical request path |
-| Consequence | Better testability and encapsulated resilience policy; more classes to own |
-| Review trigger | New downstream endpoint, latency SLO change, or incident involving billing |
+Decision
 
-### Production Review Evidence
+Excellent balance for our current business goals.
 
-- Unit tests for domain and application rules.
-- Integration tests for HTTP contract and middleware behavior.
-- Load test showing latency, CPU, memory, and dependency behavior at target concurrency.
-- Dashboard covering request rate, error rate, duration, saturation, dependency calls, and log volume.
-- Runbook explaining rollback, configuration ownership, and incident triage.
+---
 
+# Option C — Vertical Slice Architecture
 
-## Code Snippets
+```
+Feature
 
-```csharp
-public sealed class CreateOrderHandler
-{
-    private readonly IOrderRepository _orders;
-    private readonly TimeProvider _clock;
+↓
 
-    public CreateOrderHandler(IOrderRepository orders, TimeProvider clock)
-    {
-        _orders = orders;
-        _clock = clock;
-    }
+Commands
 
-    public async Task<Result<OrderDto>> HandleAsync(CreateOrderCommand command, CancellationToken cancellationToken)
-    {
-        var order = Order.Create(command.CustomerId, command.Lines, _clock.GetUtcNow());
-        await _orders.SaveAsync(order, cancellationToken);
-        return Result.Success(OrderDto.From(order));
-    }
-}
+↓
+
+Queries
+
+↓
+
+Handlers
+
+↓
+
+Infrastructure
 ```
 
-## Architecture Notes
+Advantages
 
-The architecture should keep decisions visible. A principal engineer should be able to point to the code and answer: where does policy live, where do side effects happen, where does the public contract get shaped, and where will the team look during an incident?
+- Feature-oriented.
+- Excellent for CQRS.
+- Reduces coupling between features.
 
-Recommended baseline:
+Disadvantages
 
-```text
+- More files.
+- Better suited once business complexity increases.
+- Requires stronger architectural discipline.
+
+Decision
+
+Excellent candidate for future evolution.
+
+Not selected for Version 1.
+
+---
+
+# Option D — Microservices
+
+Advantages
+
+- Independent deployment.
+- Independent scaling.
+- Team autonomy.
+
+Disadvantages
+
+Everything else.
+
+Additional complexity:
+
+- Networking
+- Distributed transactions
+- Monitoring
+- Deployment
+- Authentication
+- Versioning
+- Event consistency
+- DevOps
+
+Decision
+
+Rejected.
+
+The organization has not yet reached the complexity required to justify Microservices.
+
+A poorly designed Monolith becomes an even worse Distributed System.
+
+---
+
+# Selected Architecture
+
+We choose
+
+## Clean Architecture
+
+combined with
+
+- Dependency Injection
+- REST APIs
+- Modular Folder Structure
+- Feature Organization inside the Application Layer
+
+This provides the best balance between:
+
+- Simplicity
+- Maintainability
+- Growth
+- Testability
+
+---
+
+# Proposed Solution
+
+```
+                    Client
+
+                       │
+
+                       ▼
+
+                ASP.NET Core API
+
+                       │
+
+             Middleware Pipeline
+
+                       │
+
+                       ▼
+
+                 Application Layer
+
+              Commands / Queries
+
+                       │
+
+                       ▼
+
+                 Domain Layer
+
+             Business Rules Only
+
+                       │
+
+                       ▼
+
+             Infrastructure Layer
+
+      SQL Server / Azure / External APIs
+```
+
+---
+
+# Dependency Rule
+
+Dependencies must always point inward.
+
+```
+Presentation
+
+↓
+
+Application
+
+↓
+
+Domain
+
+Infrastructure
+```
+
+The Domain Layer must know nothing about:
+
+- ASP.NET Core
+- SQL Server
+- Azure
+- EF Core
+- Logging Frameworks
+
+The business should survive framework changes.
+
+---
+
+# Project Structure
+
+```
 src/
-  Api/              HTTP, middleware, authentication, OpenAPI, controllers/endpoints
-  Application/      Use cases, ports, validation orchestration, DTOs
-  Domain/           Entities, value objects, invariants, domain services
-  Infrastructure/   EF Core, external HTTP clients, cloud adapters, logging adapters
-  Contracts/        Public request/response contracts if shared deliberately
+
+    NovaCommerce.Api
+
+    NovaCommerce.Application
+
+    NovaCommerce.Domain
+
+    NovaCommerce.Infrastructure
+
 tests/
-  UnitTests/
-  IntegrationTests/
-  ArchitectureTests/
+
+    UnitTests
+
+    IntegrationTests
+
+docs/
+
 ```
 
-Architecture notes for this module:
+Each project has a single responsibility.
 
-- Runtime behavior must be knowable from code and docs.
-- Security boundaries must be enforced close to the request boundary and repeated in domain rules where invariants require it.
-- Maintainability comes from fewer hidden dependencies and clear ownership.
-- Scalability comes from bounded work, async I/O, stateless request handling, and thoughtful dependency limits.
-- Cost control is an architecture concern when telemetry, retries, and cloud resources scale with traffic.
+---
 
-## Principal Thinking
+# Responsibilities
 
-A principal engineer asks different questions from an implementation owner:
+## API
 
-- Why this approach, and what evidence would change our mind?
-- Why not the simpler built-in default?
-- Why not a more sophisticated platform pattern?
-- When should we avoid this design?
-- What failure mode does this design make easier to detect?
-- What failure mode does it hide?
-- How would Microsoft implement this for a broad Azure customer base?
-- How would Amazon implement this for high-scale, operationally strict service ownership?
+Responsible for
 
-Microsoft-style implementation usually emphasizes documented contracts, platform integration, secure defaults, compatibility, and tooling support. Amazon-style implementation usually emphasizes service ownership, operational metrics, blast-radius reduction, explicit runbooks, and continuous correction through incidents. A strong principal engineer can combine both instincts without cargo-culting either company.
+- HTTP
+- Authentication
+- Middleware
+- Dependency Injection
+- Configuration
 
-## Review Questions
+Nothing more.
 
-1. What production failure is most likely if this area is implemented casually?
-2. Which behavior is part of the public contract, and how is it tested?
-3. Which runtime cost grows with request volume?
-4. Which cloud platform feature changes the design assumption?
-5. How would you explain the trade-off to a CTO, an SRE, and a feature team?
-6. What would cause you to revisit this decision in six months?
+---
 
-## References
+## Application
 
-- [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/)
-- [ASP.NET Core fundamentals](https://learn.microsoft.com/aspnet/core/fundamentals/)
-- [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
-- [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/)
-- [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/)
-- Robert C. Martin, Clean Architecture
-- Mark Seemann, Dependency Injection Principles, Practices, and Patterns
-- Jeffrey Richter, CLR via C#
-- Andrew Lock, ASP.NET Core in Action
-- Martin Kleppmann, Designing Data-Intensive Applications
-- Martin Fowler architecture essays
-- Nick Chapsas, advanced .NET and ASP.NET Core content
+Responsible for
 
-## Summary
+- Use Cases
+- Validation
+- DTOs
+- Business Workflow
 
-Solution Architecture is part of the launch foundation for an enterprise-grade public API. The principal-level expectation is not memorizing framework APIs; it is understanding runtime behavior, making trade-offs explicit, proving the design with tests and telemetry, and leaving behind a system that other engineers can operate confidently.
+Should not know SQL.
+
+Should not know Azure.
+
+---
+
+## Domain
+
+Responsible only for
+
+Business Rules.
+
+Contains
+
+- Entities
+
+- Value Objects
+
+- Domain Services
+
+- Domain Events (future)
+
+The Domain Layer should be the most stable project in the solution.
+
+---
+
+## Infrastructure
+
+Responsible for
+
+- EF Core
+
+- Blob Storage
+
+- Azure
+
+- Email
+
+- External APIs
+
+Infrastructure changes frequently.
+
+Business rules should not.
+
+---
+
+# Why This Architecture?
+
+Notice something interesting.
+
+We did NOT choose Clean Architecture because:
+
+> "Everyone uses it."
+
+We selected it because it satisfies our architectural drivers.
+
+Maintainability
+
+★★★★★
+
+Testability
+
+★★★★★
+
+Cloud Readiness
+
+★★★★★
+
+Business Isolation
+
+★★★★★
+
+Complexity
+
+★★★★☆
+
+This is engineering.
+
+Not fashion.
+
+---
+
+# Trade-offs
+
+Every architecture has costs.
+
+Clean Architecture introduces
+
+- More projects
+- More abstractions
+- More interfaces
+- More dependency injection
+
+Those costs are acceptable because the expected lifetime of the project is measured in years.
+
+If this were a two-week internal tool,
+
+I would not choose this architecture.
+
+---
+
+# Future Evolution
+
+Version 2
+
+- CQRS
+
+Version 3
+
+- MediatR (optional)
+
+Version 4
+
+- Background Processing
+
+Version 5
+
+- Messaging
+
+Version 6
+
+- Distributed Services
+
+Notice
+
+The architecture grows gradually.
+
+Not by rewriting.
+
+---
+
+# Common Mistakes
+
+❌ Creating interfaces for everything.
+
+❌ Generic Repository everywhere.
+
+❌ Business logic inside Controllers.
+
+❌ EF Core entities exposed through APIs.
+
+❌ Infrastructure references leaking into Domain.
+
+❌ Choosing Microservices because they are popular.
+
+---
+
+# Principal Thinking
+
+A Senior Engineer asks
+
+> "Which architecture should we use?"
+
+A Principal Engineer asks
+
+> "Which business problem does this architecture solve?"
+
+Those two questions produce completely different systems.
+
+---
+
+# Architecture Review Checklist
+
+Before implementation begins, verify:
+
+✅ Business requirements are understood.
+
+✅ Quality attributes are prioritized.
+
+✅ Dependencies point inward.
+
+✅ Domain has zero infrastructure references.
+
+✅ Controllers contain no business logic.
+
+✅ Infrastructure is replaceable.
+
+✅ Business logic is testable.
+
+If all answers are "Yes",
+
+implementation may begin.
