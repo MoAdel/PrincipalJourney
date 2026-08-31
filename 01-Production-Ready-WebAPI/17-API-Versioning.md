@@ -1,245 +1,232 @@
-# API Versioning
+# 17 - API Versioning & Lifecycle Governance
 
-## Purpose
+> "Changing an API contract without versioning is not an improvement.
+>
+> It is an unannounced breaking change inflicted upon your consumers."
 
-Evolve public APIs without breaking enterprise consumers. This module assumes the reader already builds ASP.NET Core systems professionally. The goal is to sharpen engineering judgment: why a design exists, how it behaves under load, how it fails, and what evidence a principal engineer needs before launch.
+---
 
-> [!IMPORTANT]
-> The standard is not whether the API works on a developer machine. The standard is whether the design remains understandable, observable, secure, and operable when customers, incidents, and organizational pressure arrive.
+# Why Should a Principal Engineer Care?
 
-## Table of Contents
+In enterprise systems, you cannot force all consumers to upgrade simultaneously.
 
-- [Purpose](#purpose)
-- [Theory](#theory)
-- [Deep Dive](#deep-dive)
-- [How It Works Internally](#how-it-works-internally)
-- [Production Usage](#production-usage)
-- [Common Mistakes](#common-mistakes)
-- [Trade-offs](#trade-offs)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-- [Code Snippets](#code-snippets)
-- [Architecture Notes](#architecture-notes)
-- [Principal Thinking](#principal-thinking)
-- [Review Questions](#review-questions)
-- [References](#references)
-- [Summary](#summary)
+- Mobile applications remain installed on user devices for months or years without updating.
+- B2B retail partners take quarters to schedule integration updates.
+- Internal frontend SPAs may be cached in CDNs.
 
-## Theory
+If your backend changes a field name from `CustomerId` to `UserId` or modifies a data type from `int` to `string`, un-versioned APIs will instantly break thousands of active clients.
 
-The production-ready Web API foundation is a set of architectural constraints and runtime behaviors, not a checklist of NuGet packages. A principal engineer treats each framework feature as a design decision with blast radius across security, operability, performance, cost, and long-term maintainability.
+As a Principal Engineer, you design an **API Versioning and Deprecation Strategy** that:
+- Defines what constitutes a breaking change vs a non-breaking evolution.
+- Selects the right versioning scheme for routing, caching, and developer experience.
+- Uses standard HTTP headers (`Sunset`, `api-deprecated-versions`) to communicate lifecycle transitions.
+- Integrates seamlessly with OpenAPI / Swagger documentation.
 
-Core ideas in this module:
+---
 
-- versioning strategies
-- compatibility
-- deprecation
-- routing
-- governance
+# Production Story
 
-A mature API design separates policy from detail. HTTP, persistence, messaging, cloud configuration, logging, and documentation are details that serve the business capability. They must be explicit, replaceable where necessary, and observable when they fail.
+Friday.
 
-## Deep Dive
+08:00 PM.
 
-| Concern | Principal-level question |
-|---|---|
-| versioning strategies | Runtime behavior, production failure mode, test evidence, and decision owner |
-| compatibility | Runtime behavior, production failure mode, test evidence, and decision owner |
-| deprecation | Runtime behavior, production failure mode, test evidence, and decision owner |
-| routing | Runtime behavior, production failure mode, test evidence, and decision owner |
-| governance | Runtime behavior, production failure mode, test evidence, and decision owner |
+Nova Commerce deploys an optimization to its Order API.
 
-Deep understanding requires following the request from socket acceptance through endpoint execution, dependency resolution, validation, exception translation, response writing, logging, metrics, and cloud platform feedback. The interesting engineering work happens at boundaries: when dependencies are slow, configuration is wrong, clients misuse the API, or the team needs to evolve the contract without breaking revenue-generating consumers.
+A developer cleaned up the JSON response model, renaming `order_total` to `totalAmount` to follow C# camelCase conventions.
 
-Performance impact is rarely isolated. A small allocation in middleware can multiply by every request. A missing timeout can exhaust threads. A verbose log property can create significant Application Insights or Log Analytics cost. A poorly scoped dependency can leak memory or corrupt tenant state. A vague error contract can turn every client integration into custom support work.
+Within 15 minutes:
+- 45,000 Android app users who were running app version 2.4 experienced checkout failures.
+- Third-party accounting integrations failed to import daily sales.
+- Support received over 800 phone calls in the first hour.
 
-## How It Works Internally
+The engineering team was forced to execute an emergency midnight rollback.
 
-ASP.NET Core builds a host, loads configuration providers in order, constructs an IServiceProvider, starts Kestrel, and executes requests through a composed middleware pipeline. Endpoint routing selects metadata and delegates. Model binding and validation prepare inputs. Application services execute use cases. Infrastructure adapters talk to databases and remote services. Result execution serializes responses and emits telemetry.
+The change was logically correct, but without versioning, it was a catastrophic breaking change.
 
-Internal mechanics to reason about:
+---
 
-- The dependency injection container resolves constructor graphs and enforces lifetimes only when scope validation is enabled.
-- Middleware executes in registration order on the way in and reverse order on the way out.
-- Async request handling uses the .NET thread pool; blocking work can starve unrelated requests.
-- Configuration values are layered; later providers override earlier providers.
-- Logging providers receive structured events, scopes, categories, and levels; downstream sinks decide storage and cost.
-- Exceptions are expensive control-flow mechanisms and should represent unexpected failure, not ordinary business decisions.
+# Breaking vs Non-Breaking Changes
 
-```mermaid
-flowchart TD
-    Decision[Engineering Decision] --> Runtime[Runtime Behavior]
-    Runtime --> Ops[Operations]
-    Runtime --> Security[Security]
-    Runtime --> Cost[Cost]
-    Ops --> Feedback[Production Feedback]
-    Feedback --> Decision
+A Principal Engineer establishes clear rules for what requires a new API version:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Non-Breaking Evolution (No New Version Needed)              │
+│                                                             │
+│  • Adding a new optional request parameter / query param    │
+│  • Adding a new field to a JSON response payload            │
+│  • Adding a completely new endpoint (/api/v1/wishlists)     │
+│  • Improving performance or internal database queries       │
+└─────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────┐
+│ Breaking Change (Requires New API Version, e.g. v2.0)       │
+│                                                             │
+│  • Renaming or removing an existing request/response field  │
+│  • Changing the data type of an existing field              │
+│  • Making an optional parameter required                    │
+│  • Changing URL routing structure                           │
+│  • Altering HTTP status code semantics                      │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Production Usage
+---
 
-Use this capability as part of the launch foundation. Define the production contract, add tests around externally visible behavior, record the operational assumptions, and make the behavior visible through telemetry. Production usage means the team knows how the feature behaves during deploys, scale-out, dependency failure, secret rotation, and partial regional outage.
+# The Four Versioning Strategies
 
-Operational checklist:
+| Strategy | Example | Pros | Cons |
+|---|---|---|---|
+| **1. URL Path** | `/api/v1/orders` | Explicit, easy CDN caching, gateway-friendly, unambiguous | Couples URL to version; breaks pure REST URI opacity |
+| **2. Query String** | `/api/orders?api-version=1.0` | Easy testing in browsers, clean path structure | Caching complexity on CDNs if query strings are ignored |
+| **3. Header** | `X-Api-Version: 1.0` | Clean URLs, pure resource naming | Difficult to test in raw browsers; requires custom headers |
+| **4. Media Type (Accept)** | `Accept: application/vnd.novacommerce.v1+json` | True HATEOAS RESTful design | Complex routing, difficult API Gateway configuration |
 
-- Define the owner and review cadence.
-- Document environment-specific behavior.
-- Add observable signals: log events, metrics, traces, health checks, or dashboards.
-- Add failure-mode tests where the blast radius is high.
-- Record rollout and rollback instructions.
-- Estimate cost impact before high-volume launch.
+### Principal Recommendation:
+For public web and mobile APIs, **URL Path Versioning (`/api/v1/...`)** is the pragmatic industry standard. It provides the highest visibility, simplest API Gateway routing, and zero caching ambiguity.
 
-## Common Mistakes
+---
 
-| Mistake | Why it hurts in production | Better approach |
-|---|---|---|
-| Treating framework defaults as architecture | Defaults optimize for broad usability, not your launch risk | Make explicit decisions and document them |
-| Mixing domain logic with transport code | Makes tests brittle and contract evolution risky | Keep use cases independent of HTTP details |
-| Ignoring cancellation and timeouts | Slow dependencies can consume threads and sockets | Propagate CancellationToken and bound every call |
-| Logging unbounded payloads | Increases cost and may leak sensitive data | Log identifiers, states, and safe dimensions |
-| Adding abstractions for style only | Creates indirection without resilience | Add abstractions where they protect policy or enable tests |
+# Implementing Versioning in ASP.NET Core (`Asp.Versioning.Http`)
 
-## Trade-offs
+In modern .NET (using the official `Asp.Versioning.Http` package):
 
-| Decision pressure | Optimize for | Cost |
-|---|---|---|
-| Fast launch | Simpler architecture and fewer moving parts | Less isolation if requirements grow quickly |
-| Enterprise contract stability | Versioning, compatibility tests, documentation | More governance and slower breaking changes |
-| Deep observability | Faster incident response | Storage cost and data classification work |
-| Strong validation | Safer inputs and clearer client errors | More rules to maintain and test |
-| Cloud-native behavior | Better scaling and operations | Requires platform knowledge and automated verification |
-
-```mermaid
-flowchart TD
-    A[Choose approach] --> B{Is it a stable public contract?}
-    B -->|Yes| C[Optimize for compatibility and explicit governance]
-    B -->|No| D[Optimize for simplicity and fast feedback]
-    C --> E[Record decision]
-    D --> E
-    E --> F[Verify with tests and telemetry]
-```
-
-## Best Practices
-
-- Make external contracts explicit: OpenAPI, status codes, ProblemDetails, versioning, pagination, and error semantics.
-- Prefer simple architectural boundaries with strong tests over elaborate layering with weak ownership.
-- Design for failure first: dependency timeout, invalid configuration, expired secret, partial outage, and noisy client.
-- Use structured logs and stable dimensions; avoid high-cardinality values unless necessary.
-- Validate configuration on startup for critical settings.
-- Keep middleware order intentional and reviewed.
-- Define health checks for orchestrators, not for human curiosity alone.
-- Use architecture decision records for choices that affect multiple teams or production operations.
-
-## Examples
-
-### Architecture Decision Record Excerpt
-
-| Field | Example |
-|---|---|
-| Decision | Use typed HttpClient for cohesive downstream APIs |
-| Status | Accepted |
-| Context | The API calls a billing service on the critical request path |
-| Consequence | Better testability and encapsulated resilience policy; more classes to own |
-| Review trigger | New downstream endpoint, latency SLO change, or incident involving billing |
-
-### Production Review Evidence
-
-- Unit tests for domain and application rules.
-- Integration tests for HTTP contract and middleware behavior.
-- Load test showing latency, CPU, memory, and dependency behavior at target concurrency.
-- Dashboard covering request rate, error rate, duration, saturation, dependency calls, and log volume.
-- Runbook explaining rollback, configuration ownership, and incident triage.
-
-
-## Code Snippets
+### Step 1: Register API Versioning in `Program.cs`
 
 ```csharp
-public sealed class CreateOrderHandler
+builder.Services.AddApiVersioning(options =>
 {
-    private readonly IOrderRepository _orders;
-    private readonly TimeProvider _clock;
+    // Default to version 1.0 if the client doesn't specify one
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
 
-    public CreateOrderHandler(IOrderRepository orders, TimeProvider clock)
-    {
-        _orders = orders;
-        _clock = clock;
-    }
+    // Report supported and deprecated versions in HTTP response headers
+    options.ReportApiVersions = true;
 
-    public async Task<Result<OrderDto>> HandleAsync(CreateOrderCommand command, CancellationToken cancellationToken)
-    {
-        var order = Order.Create(command.CustomerId, command.Lines, _clock.GetUtcNow());
-        await _orders.SaveAsync(order, cancellationToken);
-        return Result.Success(OrderDto.From(order));
-    }
-}
+    // Read version from URL path and/or query string and/or header:
+    options.ApiVersionReader = ApiVersionReader.Combine(
+        new UrlSegmentApiVersionReader(),
+        new QueryStringApiVersionReader("api-version"),
+        new HeaderApiVersionReader("X-Api-Version"));
+})
+.AddApiExplorer(options =>
+{
+    // Format version as 'v'major[.minor][-status] (e.g. 'v1.0')
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
 ```
 
-## Architecture Notes
+---
 
-The architecture should keep decisions visible. A principal engineer should be able to point to the code and answer: where does policy live, where do side effects happen, where does the public contract get shaped, and where will the team look during an incident?
+### Step 2: Versioning Minimal APIs & Controllers
 
-Recommended baseline:
+#### Minimal APIs Approach (.NET 8+):
+```csharp
+var versionSet = app.NewApiVersionSet()
+    .HasApiVersion(new ApiVersion(1, 0))
+    .HasApiVersion(new ApiVersion(2, 0))
+    .ReportApiVersions()
+    .Build();
 
-```text
-src/
-  Api/              HTTP, middleware, authentication, OpenAPI, controllers/endpoints
-  Application/      Use cases, ports, validation orchestration, DTOs
-  Domain/           Entities, value objects, invariants, domain services
-  Infrastructure/   EF Core, external HTTP clients, cloud adapters, logging adapters
-  Contracts/        Public request/response contracts if shared deliberately
-tests/
-  UnitTests/
-  IntegrationTests/
-  ArchitectureTests/
+// Version 1.0 Endpoint:
+app.MapGet("/api/v{version:apiVersion}/orders/{id}", (Guid id) =>
+{
+    return TypedResults.Ok(new OrderV1Dto(id, "Legacy Format"));
+})
+.WithApiVersionSet(versionSet)
+.MapToApiVersion(1, 0);
+
+// Version 2.0 Endpoint:
+app.MapGet("/api/v{version:apiVersion}/orders/{id}", (Guid id) =>
+{
+    return TypedResults.Ok(new OrderV2Dto(id, 150.00m, "USD", DateTime.UtcNow));
+})
+.WithApiVersionSet(versionSet)
+.MapToApiVersion(2, 0);
 ```
 
-Architecture notes for this module:
+---
 
-- Runtime behavior must be knowable from code and docs.
-- Security boundaries must be enforced close to the request boundary and repeated in domain rules where invariants require it.
-- Maintainability comes from fewer hidden dependencies and clear ownership.
-- Scalability comes from bounded work, async I/O, stateless request handling, and thoughtful dependency limits.
-- Cost control is an architecture concern when telemetry, retries, and cloud resources scale with traffic.
+# API Deprecation & Sunset Governance (RFC 8594)
 
-## Principal Thinking
+When an old API version (e.g. v1.0) is slated for retirement:
 
-A principal engineer asks different questions from an implementation owner:
+### 1. The `Sunset` HTTP Header
+Inform consumers of the exact date and time the version will be permanently shut down:
 
-- Why this approach, and what evidence would change our mind?
-- Why not the simpler built-in default?
-- Why not a more sophisticated platform pattern?
-- When should we avoid this design?
-- What failure mode does this design make easier to detect?
-- What failure mode does it hide?
-- How would Microsoft implement this for a broad Azure customer base?
-- How would Amazon implement this for high-scale, operationally strict service ownership?
+```http
+HTTP/1.1 200 OK
+api-supported-versions: 2.0
+api-deprecated-versions: 1.0
+Sunset: Wed, 11 Nov 2026 00:00:00 GMT
+Link: <https://api.novacommerce.com/docs/deprecations/v1>; rel="sunset"
+```
 
-Microsoft-style implementation usually emphasizes documented contracts, platform integration, secure defaults, compatibility, and tooling support. Amazon-style implementation usually emphasizes service ownership, operational metrics, blast-radius reduction, explicit runbooks, and continuous correction through incidents. A strong principal engineer can combine both instincts without cargo-culting either company.
+### 2. Deprecation Policy Timeline:
+```
+Announcement (v2 Launched) ──► Deprecation Warning (Sunset Header Added) ──► Final Blackout (v1 Returns 410 Gone)
+       [Month 0]                                [Month 6]                                 [Month 12]
+```
 
-## Review Questions
+---
 
-1. What production failure is most likely if this area is implemented casually?
-2. Which behavior is part of the public contract, and how is it tested?
-3. Which runtime cost grows with request volume?
-4. Which cloud platform feature changes the design assumption?
-5. How would you explain the trade-off to a CTO, an SRE, and a feature team?
-6. What would cause you to revisit this decision in six months?
+# Common Mistakes
 
-## References
+❌ **Modifying DTOs In-Place for New Features that Break Old Consumers**
+```csharp
+// Modifying an existing DTO breaks serialized contracts across existing mobile app versions.
+```
+✅ **Create distinct DTOs per version (`OrderV1Response`, `OrderV2Response`) in separate versioned namespaces.**
 
-- [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/)
-- [ASP.NET Core fundamentals](https://learn.microsoft.com/aspnet/core/fundamentals/)
-- [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
-- [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/)
-- [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/)
-- Robert C. Martin, Clean Architecture
-- Mark Seemann, Dependency Injection Principles, Practices, and Patterns
-- Jeffrey Richter, CLR via C#
-- Andrew Lock, ASP.NET Core in Action
-- Martin Kleppmann, Designing Data-Intensive Applications
-- Martin Fowler architecture essays
-- Nick Chapsas, advanced .NET and ASP.NET Core content
+❌ **Keeping Deprecated API Versions Alive Indefinitely**
+```csharp
+// Supporting 10 historical API versions creates massive maintenance drag, technical debt, and security surface.
+```
+✅ **Establish a formal 12-month Deprecation & Sunset policy with automated telemetry tracking active v1 consumers.**
 
-## Summary
+❌ **Using Patch Versions in API URLs (`/api/v1.2.4/orders`)**
+```
+// URLs should only reflect Major breaking versions (/api/v1/, /api/v2/). Minor and patch changes must be backward-compatible.
+```
 
-API Versioning is part of the launch foundation for an enterprise-grade public API. The principal-level expectation is not memorizing framework APIs; it is understanding runtime behavior, making trade-offs explicit, proving the design with tests and telemetry, and leaving behind a system that other engineers can operate confidently.
+---
+
+# Architect's Decision
+
+### Scenario
+Nova Commerce needs an API versioning strategy supporting 5 million consumer mobile devices and 500 B2B enterprise partners.
+
+### Standards Adopted:
+1. **Primary Scheme**: URL Path Versioning (`/api/v1/...`, `/api/v2/...`).
+2. **Backward Compatibility**: All minor additions must be backward-compatible (non-breaking additions only).
+3. **Deprecation Window**: 12-month minimum notice before decommissioning any major version.
+4. **Headers**: Automatically emit `api-supported-versions`, `api-deprecated-versions`, and RFC 8594 `Sunset` headers on all responses.
+
+---
+
+# Principal Thinking
+
+| Level | Perspective | Focus |
+|---|---|---|
+| **Junior** | URL String | "I changed the route to `/api/v2/orders`." |
+| **Senior** | Package Integration | "I configured `Asp.Versioning.Http` with Swagger integration." |
+| **Principal** | Contract Governance & Migration | "What is our backward compatibility guarantee, breaking change taxonomy, automated Sunset header governance, and multi-version client migration strategy?" |
+
+---
+
+# Learning Resources & References
+
+### Authoritative Documentation
+- [ASP.NET Core API Versioning Guide (Official GitHub)](https://github.com/dotnet/aspnet-api-versioning)
+- [RFC 8594: The Sunset HTTP Header Field](https://datatracker.ietf.org/doc/html/rfc8594)
+- [Microsoft REST API Guidelines: Versioning](https://github.com/microsoft/api-guidelines/blob/vNext/Guidelines.md#12-versioning)
+
+---
+
+# Self Assessment
+
+1. Explain the difference between a breaking change and a non-breaking API evolution.
+2. What are the trade-offs between URL Path Versioning and Header Versioning?
+3. How does the RFC 8594 `Sunset` header inform API consumers of impending retirement?
+4. How do you configure `Asp.Versioning.Http` to report supported and deprecated versions automatically?
+5. Why should API URLs only include the Major version number (e.g. `v1`) rather than minor/patch numbers (`v1.2.4`)?

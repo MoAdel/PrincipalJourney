@@ -1,383 +1,318 @@
-# Hands-On Labs
+# 22 - Hands-On Architecture Labs: Nova Commerce API
 
-## Purpose
+> "Architecture on a whiteboard is an opinion.
+>
+> Architecture in code is a working reality."
 
-Provide practical labs that force implementation, troubleshooting, and design judgment. This module assumes the reader already builds ASP.NET Core systems professionally. The goal is to sharpen engineering judgment: why a design exists, how it behaves under load, how it fails, and what evidence a principal engineer needs before launch.
+---
 
-> [!IMPORTANT]
-> The standard is not whether the API works on a developer machine. The standard is whether the design remains understandable, observable, secure, and operable when customers, incidents, and organizational pressure arrive.
+# Overview
 
-## Table of Contents
+These 8 progressive hands-on engineering labs guide you through implementing the production-ready foundation for **Nova Commerce**.
 
-- [Purpose](#purpose)
-- [Theory](#theory)
-- [Deep Dive](#deep-dive)
-- [How It Works Internally](#how-it-works-internally)
-- [Production Usage](#production-usage)
-- [Common Mistakes](#common-mistakes)
-- [Trade-offs](#trade-offs)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-- [Code Snippets](#code-snippets)
-- [Architecture Notes](#architecture-notes)
-- [Principal Thinking](#principal-thinking)
-- [Review Questions](#review-questions)
-- [References](#references)
-- [Summary](#summary)
+Each lab isolates a core architectural discipline, presents the requirements, code implementation, and verification steps.
 
-## Theory
+---
 
-The production-ready Web API foundation is a set of architectural constraints and runtime behaviors, not a checklist of NuGet packages. A principal engineer treats each framework feature as a design decision with blast radius across security, operability, performance, cost, and long-term maintainability.
+# Lab 1: Clean Architecture Solution Structure
 
-Core ideas in this module:
+### Objective
+Create an enterprise solution with strict dependency inversion boundaries.
 
-- lab sequence
-- architecture lab
-- observability lab
-- resilience lab
-- security lab
+### Instructions:
+1. Initialize the solution and project structure:
+```bash
+dotnet new sln -n NovaCommerce
+mkdir src tests
 
-A mature API design separates policy from detail. HTTP, persistence, messaging, cloud configuration, logging, and documentation are details that serve the business capability. They must be explicit, replaceable where necessary, and observable when they fail.
+dotnet new classlib -n NovaCommerce.Domain -o src/NovaCommerce.Domain
+dotnet new classlib -n NovaCommerce.Application -o src/NovaCommerce.Application
+dotnet new classlib -n NovaCommerce.Infrastructure -o src/NovaCommerce.Infrastructure
+dotnet new webapi -n NovaCommerce.Api -o src/NovaCommerce.Api
 
-## Deep Dive
+dotnet new xunit -n NovaCommerce.UnitTests -o tests/NovaCommerce.UnitTests
+dotnet new xunit -n NovaCommerce.ArchitectureTests -o tests/NovaCommerce.ArchitectureTests
 
-| Concern | Principal-level question |
-|---|---|
-| lab sequence | Runtime behavior, production failure mode, test evidence, and decision owner |
-| architecture lab | Runtime behavior, production failure mode, test evidence, and decision owner |
-| observability lab | Runtime behavior, production failure mode, test evidence, and decision owner |
-| resilience lab | Runtime behavior, production failure mode, test evidence, and decision owner |
-| security lab | Runtime behavior, production failure mode, test evidence, and decision owner |
-
-Deep understanding requires following the request from socket acceptance through endpoint execution, dependency resolution, validation, exception translation, response writing, logging, metrics, and cloud platform feedback. The interesting engineering work happens at boundaries: when dependencies are slow, configuration is wrong, clients misuse the API, or the team needs to evolve the contract without breaking revenue-generating consumers.
-
-Performance impact is rarely isolated. A small allocation in middleware can multiply by every request. A missing timeout can exhaust threads. A verbose log property can create significant Application Insights or Log Analytics cost. A poorly scoped dependency can leak memory or corrupt tenant state. A vague error contract can turn every client integration into custom support work.
-
-## How It Works Internally
-
-ASP.NET Core builds a host, loads configuration providers in order, constructs an IServiceProvider, starts Kestrel, and executes requests through a composed middleware pipeline. Endpoint routing selects metadata and delegates. Model binding and validation prepare inputs. Application services execute use cases. Infrastructure adapters talk to databases and remote services. Result execution serializes responses and emits telemetry.
-
-Internal mechanics to reason about:
-
-- The dependency injection container resolves constructor graphs and enforces lifetimes only when scope validation is enabled.
-- Middleware executes in registration order on the way in and reverse order on the way out.
-- Async request handling uses the .NET thread pool; blocking work can starve unrelated requests.
-- Configuration values are layered; later providers override earlier providers.
-- Logging providers receive structured events, scopes, categories, and levels; downstream sinks decide storage and cost.
-- Exceptions are expensive control-flow mechanisms and should represent unexpected failure, not ordinary business decisions.
-
-```mermaid
-flowchart TD
-    Decision[Engineering Decision] --> Runtime[Runtime Behavior]
-    Runtime --> Ops[Operations]
-    Runtime --> Security[Security]
-    Runtime --> Cost[Cost]
-    Ops --> Feedback[Production Feedback]
-    Feedback --> Decision
+dotnet sln add src/*/*.csproj tests/*/*.csproj
 ```
 
-## Production Usage
+2. Establish dependency directions:
+```bash
+# Application depends on Domain
+dotnet add src/NovaCommerce.Application reference src/NovaCommerce.Domain
 
-Use this capability as part of the launch foundation. Define the production contract, add tests around externally visible behavior, record the operational assumptions, and make the behavior visible through telemetry. Production usage means the team knows how the feature behaves during deploys, scale-out, dependency failure, secret rotation, and partial regional outage.
+# Infrastructure depends on Application and Domain
+dotnet add src/NovaCommerce.Infrastructure reference src/NovaCommerce.Application
 
-Operational checklist:
-
-- Define the owner and review cadence.
-- Document environment-specific behavior.
-- Add observable signals: log events, metrics, traces, health checks, or dashboards.
-- Add failure-mode tests where the blast radius is high.
-- Record rollout and rollback instructions.
-- Estimate cost impact before high-volume launch.
-
-## Common Mistakes
-
-| Mistake | Why it hurts in production | Better approach |
-|---|---|---|
-| Treating framework defaults as architecture | Defaults optimize for broad usability, not your launch risk | Make explicit decisions and document them |
-| Mixing domain logic with transport code | Makes tests brittle and contract evolution risky | Keep use cases independent of HTTP details |
-| Ignoring cancellation and timeouts | Slow dependencies can consume threads and sockets | Propagate CancellationToken and bound every call |
-| Logging unbounded payloads | Increases cost and may leak sensitive data | Log identifiers, states, and safe dimensions |
-| Adding abstractions for style only | Creates indirection without resilience | Add abstractions where they protect policy or enable tests |
-
-## Trade-offs
-
-| Decision pressure | Optimize for | Cost |
-|---|---|---|
-| Fast launch | Simpler architecture and fewer moving parts | Less isolation if requirements grow quickly |
-| Enterprise contract stability | Versioning, compatibility tests, documentation | More governance and slower breaking changes |
-| Deep observability | Faster incident response | Storage cost and data classification work |
-| Strong validation | Safer inputs and clearer client errors | More rules to maintain and test |
-| Cloud-native behavior | Better scaling and operations | Requires platform knowledge and automated verification |
-
-```mermaid
-flowchart TD
-    A[Choose approach] --> B{Is it a stable public contract?}
-    B -->|Yes| C[Optimize for compatibility and explicit governance]
-    B -->|No| D[Optimize for simplicity and fast feedback]
-    C --> E[Record decision]
-    D --> E
-    E --> F[Verify with tests and telemetry]
+# Api (Composition Root) depends on Infrastructure and Application
+dotnet add src/NovaCommerce.Api reference src/NovaCommerce.Infrastructure src/NovaCommerce.Application
 ```
 
-## Best Practices
+3. Add **NetArchTest.Rules** to `NovaCommerce.ArchitectureTests` and enforce that Domain has zero dependencies.
 
-- Make external contracts explicit: OpenAPI, status codes, ProblemDetails, versioning, pagination, and error semantics.
-- Prefer simple architectural boundaries with strong tests over elaborate layering with weak ownership.
-- Design for failure first: dependency timeout, invalid configuration, expired secret, partial outage, and noisy client.
-- Use structured logs and stable dimensions; avoid high-cardinality values unless necessary.
-- Validate configuration on startup for critical settings.
-- Keep middleware order intentional and reviewed.
-- Define health checks for orchestrators, not for human curiosity alone.
-- Use architecture decision records for choices that affect multiple teams or production operations.
+---
 
-## Examples
+# Lab 2: Zero-Allocation Structured Logging & Correlation Scope Middleware
 
-### Lab 01 - Define API Architecture
+### Objective
+Implement request correlation tracing with ambient scopes and compile-time `[LoggerMessage]` source generators.
 
-| Field | Detail |
-|---|---|
-| Scenario | The startup needs a launch-grade API foundation before onboarding enterprise customers. |
-| Goal | Create the initial solution structure and architecture decision record. |
-| Estimated time | 45 minutes |
-
-Steps:
-1. Read the relevant module and write the decision you are about to make.
-2. Implement the smallest production-shaped slice.
-3. Add tests that prove the contract, not implementation trivia.
-4. Add telemetry or review evidence that would help during an incident.
-5. Record the operational trade-off.
-
-Expected result:
-- A working API foundation with explicit decisions and review evidence.
-- A reviewer can explain why the design is maintainable, secure, observable, and cloud-ready.
-
-Bonus challenge:
-- Introduce a failure mode and prove the API degrades predictably.
-
-Common mistakes:
-- Completing only the happy path.
-- Adding libraries without defining ownership, failure behavior, and production cost.
-
-### Lab 02 - Build the Request Pipeline
-
-| Field | Detail |
-|---|---|
-| Scenario | The startup needs a launch-grade API foundation before onboarding enterprise customers. |
-| Goal | Add exception handling, routing, authentication placeholders, rate limiting, and health checks. |
-| Estimated time | 60 minutes |
-
-Steps:
-1. Read the relevant module and write the decision you are about to make.
-2. Implement the smallest production-shaped slice.
-3. Add tests that prove the contract, not implementation trivia.
-4. Add telemetry or review evidence that would help during an incident.
-5. Record the operational trade-off.
-
-Expected result:
-- A working API foundation with explicit decisions and review evidence.
-- A reviewer can explain why the design is maintainable, secure, observable, and cloud-ready.
-
-Bonus challenge:
-- Introduce a failure mode and prove the API degrades predictably.
-
-Common mistakes:
-- Completing only the happy path.
-- Adding libraries without defining ownership, failure behavior, and production cost.
-
-### Lab 03 - Implement Validation and ProblemDetails
-
-| Field | Detail |
-|---|---|
-| Scenario | The startup needs a launch-grade API foundation before onboarding enterprise customers. |
-| Goal | Create stable input validation and error responses. |
-| Estimated time | 75 minutes |
-
-Steps:
-1. Read the relevant module and write the decision you are about to make.
-2. Implement the smallest production-shaped slice.
-3. Add tests that prove the contract, not implementation trivia.
-4. Add telemetry or review evidence that would help during an incident.
-5. Record the operational trade-off.
-
-Expected result:
-- A working API foundation with explicit decisions and review evidence.
-- A reviewer can explain why the design is maintainable, secure, observable, and cloud-ready.
-
-Bonus challenge:
-- Introduce a failure mode and prove the API degrades predictably.
-
-Common mistakes:
-- Completing only the happy path.
-- Adding libraries without defining ownership, failure behavior, and production cost.
-
-### Lab 04 - Add Observability
-
-| Field | Detail |
-|---|---|
-| Scenario | The startup needs a launch-grade API foundation before onboarding enterprise customers. |
-| Goal | Add structured logs, correlation, health checks, and OpenTelemetry-ready conventions. |
-| Estimated time | 90 minutes |
-
-Steps:
-1. Read the relevant module and write the decision you are about to make.
-2. Implement the smallest production-shaped slice.
-3. Add tests that prove the contract, not implementation trivia.
-4. Add telemetry or review evidence that would help during an incident.
-5. Record the operational trade-off.
-
-Expected result:
-- A working API foundation with explicit decisions and review evidence.
-- A reviewer can explain why the design is maintainable, secure, observable, and cloud-ready.
-
-Bonus challenge:
-- Introduce a failure mode and prove the API degrades predictably.
-
-Common mistakes:
-- Completing only the happy path.
-- Adding libraries without defining ownership, failure behavior, and production cost.
-
-### Lab 05 - Harden Outbound HTTP
-
-| Field | Detail |
-|---|---|
-| Scenario | The startup needs a launch-grade API foundation before onboarding enterprise customers. |
-| Goal | Use typed HttpClient, timeouts, retries, circuit breaking, and cancellation. |
-| Estimated time | 75 minutes |
-
-Steps:
-1. Read the relevant module and write the decision you are about to make.
-2. Implement the smallest production-shaped slice.
-3. Add tests that prove the contract, not implementation trivia.
-4. Add telemetry or review evidence that would help during an incident.
-5. Record the operational trade-off.
-
-Expected result:
-- A working API foundation with explicit decisions and review evidence.
-- A reviewer can explain why the design is maintainable, secure, observable, and cloud-ready.
-
-Bonus challenge:
-- Introduce a failure mode and prove the API degrades predictably.
-
-Common mistakes:
-- Completing only the happy path.
-- Adding libraries without defining ownership, failure behavior, and production cost.
-
-### Lab 06 - Production Readiness Review
-
-| Field | Detail |
-|---|---|
-| Scenario | The startup needs a launch-grade API foundation before onboarding enterprise customers. |
-| Goal | Run the checklist and write a principal-level approval note. |
-| Estimated time | 60 minutes |
-
-Steps:
-1. Read the relevant module and write the decision you are about to make.
-2. Implement the smallest production-shaped slice.
-3. Add tests that prove the contract, not implementation trivia.
-4. Add telemetry or review evidence that would help during an incident.
-5. Record the operational trade-off.
-
-Expected result:
-- A working API foundation with explicit decisions and review evidence.
-- A reviewer can explain why the design is maintainable, secure, observable, and cloud-ready.
-
-Bonus challenge:
-- Introduce a failure mode and prove the API degrades predictably.
-
-Common mistakes:
-- Completing only the happy path.
-- Adding libraries without defining ownership, failure behavior, and production cost.
-
-
-## Code Snippets
-
+### 1. Compile-Time Logger Messages (`OrderLogMessages.cs` in Application):
 ```csharp
-public sealed class CreateOrderHandler
+public static partial class OrderLogMessages
 {
-    private readonly IOrderRepository _orders;
-    private readonly TimeProvider _clock;
+    [LoggerMessage(
+        EventId = 1001,
+        Level = LogLevel.Information,
+        Message = "Processing checkout for Order {OrderId} of Customer {CustomerId}")]
+    public static partial void LogCheckoutStarted(ILogger logger, Guid orderId, Guid customerId);
 
-    public CreateOrderHandler(IOrderRepository orders, TimeProvider clock)
-    {
-        _orders = orders;
-        _clock = clock;
-    }
+    [LoggerMessage(
+        EventId = 1002,
+        Level = LogLevel.Information,
+        Message = "Order {OrderId} successfully placed in {ElapsedMs}ms")]
+    public static partial void LogCheckoutCompleted(ILogger logger, Guid orderId, long elapsedMs);
+}
+```
 
-    public async Task<Result<OrderDto>> HandleAsync(CreateOrderCommand command, CancellationToken cancellationToken)
+### 2. Correlation Scope Middleware (`CorrelationScopeMiddleware.cs` in Api):
+```csharp
+public class CorrelationScopeMiddleware(RequestDelegate next, ILogger<CorrelationScopeMiddleware> logger)
+{
+    public async Task InvokeAsync(HttpContext context)
     {
-        var order = Order.Create(command.CustomerId, command.Lines, _clock.GetUtcNow());
-        await _orders.SaveAsync(order, cancellationToken);
-        return Result.Success(OrderDto.From(order));
+        var correlationId = context.Request.Headers["X-Correlation-Id"].FirstOrDefault() 
+                            ?? Guid.NewGuid().ToString("N");
+
+        context.Response.Headers.Append("X-Correlation-Id", correlationId);
+
+        using (logger.BeginScope(new Dictionary<string, object>
+        {
+            ["CorrelationId"] = correlationId,
+            ["TraceId"] = context.TraceIdentifier
+        }))
+        {
+            await next(context);
+        }
     }
 }
 ```
 
-## Architecture Notes
+---
 
-The architecture should keep decisions visible. A principal engineer should be able to point to the code and answer: where does policy live, where do side effects happen, where does the public contract get shaped, and where will the team look during an incident?
+# Lab 3: RFC 7807 Global Exception Handler
 
-Recommended baseline:
+### Objective
+Implement `IExceptionHandler` in .NET 8/9+ to sanitize production faults into RFC 7807 ProblemDetails.
 
-```text
-src/
-  Api/              HTTP, middleware, authentication, OpenAPI, controllers/endpoints
-  Application/      Use cases, ports, validation orchestration, DTOs
-  Domain/           Entities, value objects, invariants, domain services
-  Infrastructure/   EF Core, external HTTP clients, cloud adapters, logging adapters
-  Contracts/        Public request/response contracts if shared deliberately
-tests/
-  UnitTests/
-  IntegrationTests/
-  ArchitectureTests/
+### `GlobalExceptionHandler.cs`:
+```csharp
+public sealed class GlobalExceptionHandler(
+    ILogger<GlobalExceptionHandler> logger,
+    IProblemDetailsService problemDetailsService) : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(
+        HttpContext httpContext,
+        Exception exception,
+        CancellationToken cancellationToken)
+    {
+        logger.LogError(exception, "Unhandled exception on {Path}: {Message}", 
+            httpContext.Request.Path, exception.Message);
+
+        var statusCode = exception switch
+        {
+            ValidationException => StatusCodes.Status400BadRequest,
+            KeyNotFoundException => StatusCodes.Status404NotFound,
+            InvalidOperationException => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status500InternalServerError
+        };
+
+        httpContext.Response.StatusCode = statusCode;
+
+        return await problemDetailsService.TryWriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = httpContext,
+            ProblemDetails = new ProblemDetails
+            {
+                Status = statusCode,
+                Title = statusCode == 500 ? "Internal Server Error" : exception.GetType().Name,
+                Detail = statusCode == 500 ? "An unexpected error occurred. Please quote the trace ID." : exception.Message,
+                Instance = httpContext.Request.Path,
+                Extensions = { ["traceId"] = httpContext.TraceIdentifier }
+            }
+        });
+    }
+}
 ```
 
-Architecture notes for this module:
+---
 
-- Runtime behavior must be knowable from code and docs.
-- Security boundaries must be enforced close to the request boundary and repeated in domain rules where invariants require it.
-- Maintainability comes from fewer hidden dependencies and clear ownership.
-- Scalability comes from bounded work, async I/O, stateless request handling, and thoughtful dependency limits.
-- Cost control is an architecture concern when telemetry, retries, and cloud resources scale with traffic.
+# Lab 4: FluentValidation with Pipeline Behavior
 
-## Principal Thinking
+### Objective
+Build reusable validation rules in the Application layer without controller clutter.
 
-A principal engineer asks different questions from an implementation owner:
+### 1. FluentValidator:
+```csharp
+public sealed class CreateProductRequestValidator : AbstractValidator<CreateProductRequest>
+{
+    public CreateProductRequestValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.Price).GreaterThan(0);
+        RuleFor(x => x.Sku).Matches(@"^[A-Z]{3}-\d{4}$").WithMessage("SKU must match format ABC-1234");
+    }
+}
+```
 
-- Why this approach, and what evidence would change our mind?
-- Why not the simpler built-in default?
-- Why not a more sophisticated platform pattern?
-- When should we avoid this design?
-- What failure mode does this design make easier to detect?
-- What failure mode does it hide?
-- How would Microsoft implement this for a broad Azure customer base?
-- How would Amazon implement this for high-scale, operationally strict service ownership?
+### 2. CQRS Validation Pipeline:
+```csharp
+public sealed class ValidationBehavior<TRequest, TResponse>(IEnumerable<IValidator<TRequest>> validators)
+    : IPipelineBehavior<TRequest, TResponse> where TRequest : notnull
+{
+    public async Task<TResponse> Handle(TRequest request, RequestHandlerDelegate<TResponse> next, CancellationToken ct)
+    {
+        if (!validators.Any()) return await next();
 
-Microsoft-style implementation usually emphasizes documented contracts, platform integration, secure defaults, compatibility, and tooling support. Amazon-style implementation usually emphasizes service ownership, operational metrics, blast-radius reduction, explicit runbooks, and continuous correction through incidents. A strong principal engineer can combine both instincts without cargo-culting either company.
+        var context = new ValidationContext<TRequest>(request);
+        var validationResults = await Task.WhenAll(validators.Select(v => v.ValidateAsync(context, ct)));
+        var failures = validationResults.SelectMany(r => r.Errors).Where(f => f != null).ToList();
 
-## Review Questions
+        if (failures.Count != 0)
+            throw new ValidationException(failures);
 
-1. What production failure is most likely if this area is implemented casually?
-2. Which behavior is part of the public contract, and how is it tested?
-3. Which runtime cost grows with request volume?
-4. Which cloud platform feature changes the design assumption?
-5. How would you explain the trade-off to a CTO, an SRE, and a feature team?
-6. What would cause you to revisit this decision in six months?
+        return await next();
+    }
+}
+```
 
-## References
+---
 
-- [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/)
-- [ASP.NET Core fundamentals](https://learn.microsoft.com/aspnet/core/fundamentals/)
-- [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
-- [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/)
-- [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/)
-- Robert C. Martin, Clean Architecture
-- Mark Seemann, Dependency Injection Principles, Practices, and Patterns
-- Jeffrey Richter, CLR via C#
-- Andrew Lock, ASP.NET Core in Action
-- Martin Kleppmann, Designing Data-Intensive Applications
-- Martin Fowler architecture essays
-- Nick Chapsas, advanced .NET and ASP.NET Core content
+# Lab 5: Idempotency Key Filter with Distributed Caching
 
-## Summary
+### Objective
+Prevent duplicate order submissions when clients retry requests.
 
-Hands-On Labs is part of the launch foundation for an enterprise-grade public API. The principal-level expectation is not memorizing framework APIs; it is understanding runtime behavior, making trade-offs explicit, proving the design with tests and telemetry, and leaving behind a system that other engineers can operate confidently.
+```csharp
+public sealed class IdempotentAttribute : Attribute, IAsyncActionFilter
+{
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    {
+        if (!context.HttpContext.Request.Headers.TryGetValue("Idempotency-Key", out var keyVal))
+        {
+            context.Result = new BadRequestObjectResult(new ProblemDetails 
+            { 
+                Title = "Missing Header", 
+                Detail = "Idempotency-Key header is required for this operation." 
+            });
+            return;
+        }
+
+        var cache = context.HttpContext.RequestServices.GetRequiredService<IDistributedCache>();
+        var cacheKey = $"idempotency:{keyVal}";
+
+        var cachedResponse = await cache.GetStringAsync(cacheKey);
+        if (cachedResponse != null)
+        {
+            // Replay identical response
+            context.Result = new ContentResult
+            {
+                Content = cachedResponse,
+                ContentType = "application/json",
+                StatusCode = StatusCodes.Status200OK
+            };
+            return;
+        }
+
+        var executedContext = await next();
+
+        if (executedContext.Result is ObjectResult objectResult && objectResult.StatusCode is >= 200 and < 300)
+        {
+            var json = JsonSerializer.Serialize(objectResult.Value);
+            await cache.SetStringAsync(cacheKey, json, new DistributedCacheEntryOptions 
+            { 
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(24) 
+            });
+        }
+    }
+}
+```
+
+---
+
+# Lab 6: Resilient Outbound HTTP Client with Polly v8
+
+### Objective
+Integrate with Payment Gateway using typed clients, socket connection pooling, and Polly resilience.
+
+```csharp
+builder.Services.AddHttpClient<IPaymentGatewayClient, PaymentGatewayClient>(client =>
+{
+    client.BaseAddress = new Uri("https://api.paymentgateway.com/v1/");
+    client.Timeout = TimeSpan.FromSeconds(10);
+})
+.AddStandardResilienceHandler(options =>
+{
+    options.Retry.MaxRetryAttempts = 3;
+    options.Retry.BackoffType = DelayBackoffType.Exponential;
+    options.Retry.UseJitter = true;
+    options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+    options.CircuitBreaker.FailureRatio = 0.5;
+});
+```
+
+---
+
+# Lab 7: API Versioning & Native OpenAPI Documentation
+
+### Objective
+Configure URL versioning (`/api/v1/`, `/api/v2/`) and OpenAPI v3 documentation.
+
+```csharp
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = new UrlSegmentApiVersionReader();
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+
+builder.Services.AddOpenApi("v1");
+builder.Services.AddOpenApi("v2");
+```
+
+---
+
+# Lab 8: Container Probes & Azure Key Vault Secrets
+
+### Objective
+Configure three-tier health probes and Managed Identity secret retrieval.
+
+```csharp
+builder.Services.AddHealthChecks()
+    .AddCheck("self", () => HealthCheckResult.Healthy(), tags: ["live"])
+    .AddSqlServer(builder.Configuration.GetConnectionString("SqlDatabase")!, tags: ["ready"]);
+
+var app = builder.Build();
+
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live")
+});
+
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
+```
+
+---
+
+# Lab Completion Criteria
+
+Your Nova Commerce API is complete when all 8 labs compile, all unit and architecture tests pass, and your container passes Kubernetes Liveness/Readiness probes under load.

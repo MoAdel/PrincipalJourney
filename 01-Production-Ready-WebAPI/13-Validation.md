@@ -1,240 +1,316 @@
-# Validation
+# 13 - Input Validation & Domain Invariants
 
-## Purpose
+> "Input validation protects your system from the outside world.
+>
+> Domain invariants protect your business from your own bugs."
 
-Separate input validation, business invariants, and persistence constraints. This module assumes the reader already builds ASP.NET Core systems professionally. The goal is to sharpen engineering judgment: why a design exists, how it behaves under load, how it fails, and what evidence a principal engineer needs before launch.
+---
 
-> [!IMPORTANT]
-> The standard is not whether the API works on a developer machine. The standard is whether the design remains understandable, observable, secure, and operable when customers, incidents, and organizational pressure arrive.
+# Why Should a Principal Engineer Care?
 
-## Table of Contents
-
-- [Purpose](#purpose)
-- [Theory](#theory)
-- [Deep Dive](#deep-dive)
-- [How It Works Internally](#how-it-works-internally)
-- [Production Usage](#production-usage)
-- [Common Mistakes](#common-mistakes)
-- [Trade-offs](#trade-offs)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-- [Code Snippets](#code-snippets)
-- [Architecture Notes](#architecture-notes)
-- [Principal Thinking](#principal-thinking)
-- [Review Questions](#review-questions)
-- [References](#references)
-- [Summary](#summary)
-
-## Theory
-
-The production-ready Web API foundation is a set of architectural constraints and runtime behaviors, not a checklist of NuGet packages. A principal engineer treats each framework feature as a design decision with blast radius across security, operability, performance, cost, and long-term maintainability.
-
-Core ideas in this module:
-
-- model binding
-- FluentValidation
-- domain invariants
-- 400 vs 422
-- test strategy
-
-A mature API design separates policy from detail. HTTP, persistence, messaging, cloud configuration, logging, and documentation are details that serve the business capability. They must be explicit, replaceable where necessary, and observable when they fail.
-
-## Deep Dive
-
-| Concern | Principal-level question |
-|---|---|
-| model binding | Runtime behavior, production failure mode, test evidence, and decision owner |
-| FluentValidation | Runtime behavior, production failure mode, test evidence, and decision owner |
-| domain invariants | Runtime behavior, production failure mode, test evidence, and decision owner |
-| 400 vs 422 | Runtime behavior, production failure mode, test evidence, and decision owner |
-| test strategy | Runtime behavior, production failure mode, test evidence, and decision owner |
-
-Deep understanding requires following the request from socket acceptance through endpoint execution, dependency resolution, validation, exception translation, response writing, logging, metrics, and cloud platform feedback. The interesting engineering work happens at boundaries: when dependencies are slow, configuration is wrong, clients misuse the API, or the team needs to evolve the contract without breaking revenue-generating consumers.
-
-Performance impact is rarely isolated. A small allocation in middleware can multiply by every request. A missing timeout can exhaust threads. A verbose log property can create significant Application Insights or Log Analytics cost. A poorly scoped dependency can leak memory or corrupt tenant state. A vague error contract can turn every client integration into custom support work.
-
-## How It Works Internally
-
-ASP.NET Core builds a host, loads configuration providers in order, constructs an IServiceProvider, starts Kestrel, and executes requests through a composed middleware pipeline. Endpoint routing selects metadata and delegates. Model binding and validation prepare inputs. Application services execute use cases. Infrastructure adapters talk to databases and remote services. Result execution serializes responses and emits telemetry.
-
-Internal mechanics to reason about:
-
-- The dependency injection container resolves constructor graphs and enforces lifetimes only when scope validation is enabled.
-- Middleware executes in registration order on the way in and reverse order on the way out.
-- Async request handling uses the .NET thread pool; blocking work can starve unrelated requests.
-- Configuration values are layered; later providers override earlier providers.
-- Logging providers receive structured events, scopes, categories, and levels; downstream sinks decide storage and cost.
-- Exceptions are expensive control-flow mechanisms and should represent unexpected failure, not ordinary business decisions.
-
-```mermaid
-flowchart TD
-    Decision[Engineering Decision] --> Runtime[Runtime Behavior]
-    Runtime --> Ops[Operations]
-    Runtime --> Security[Security]
-    Runtime --> Cost[Cost]
-    Ops --> Feedback[Production Feedback]
-    Feedback --> Decision
-```
-
-## Production Usage
-
-Use this capability as part of the launch foundation. Define the production contract, add tests around externally visible behavior, record the operational assumptions, and make the behavior visible through telemetry. Production usage means the team knows how the feature behaves during deploys, scale-out, dependency failure, secret rotation, and partial regional outage.
-
-Operational checklist:
-
-- Define the owner and review cadence.
-- Document environment-specific behavior.
-- Add observable signals: log events, metrics, traces, health checks, or dashboards.
-- Add failure-mode tests where the blast radius is high.
-- Record rollout and rollback instructions.
-- Estimate cost impact before high-volume launch.
-
-## Common Mistakes
-
-| Mistake | Why it hurts in production | Better approach |
-|---|---|---|
-| Treating framework defaults as architecture | Defaults optimize for broad usability, not your launch risk | Make explicit decisions and document them |
-| Mixing domain logic with transport code | Makes tests brittle and contract evolution risky | Keep use cases independent of HTTP details |
-| Ignoring cancellation and timeouts | Slow dependencies can consume threads and sockets | Propagate CancellationToken and bound every call |
-| Logging unbounded payloads | Increases cost and may leak sensitive data | Log identifiers, states, and safe dimensions |
-| Adding abstractions for style only | Creates indirection without resilience | Add abstractions where they protect policy or enable tests |
-
-## Trade-offs
-
-| Decision pressure | Optimize for | Cost |
-|---|---|---|
-| Fast launch | Simpler architecture and fewer moving parts | Less isolation if requirements grow quickly |
-| Enterprise contract stability | Versioning, compatibility tests, documentation | More governance and slower breaking changes |
-| Deep observability | Faster incident response | Storage cost and data classification work |
-| Strong validation | Safer inputs and clearer client errors | More rules to maintain and test |
-| Cloud-native behavior | Better scaling and operations | Requires platform knowledge and automated verification |
-
-```mermaid
-flowchart TD
-    A[Validation rule] --> B{Shape or transport rule?}
-    B -->|Yes| C[Model binding/DataAnnotations]
-    B -->|Complex input rule| D[FluentValidation]
-    B -->|Business invariant| E[Domain model]
-    C --> F[Test API contract]
-    D --> F
-    E --> G[Test domain behavior]
-```
-
-## Best Practices
-
-- Make external contracts explicit: OpenAPI, status codes, ProblemDetails, versioning, pagination, and error semantics.
-- Prefer simple architectural boundaries with strong tests over elaborate layering with weak ownership.
-- Design for failure first: dependency timeout, invalid configuration, expired secret, partial outage, and noisy client.
-- Use structured logs and stable dimensions; avoid high-cardinality values unless necessary.
-- Validate configuration on startup for critical settings.
-- Keep middleware order intentional and reviewed.
-- Define health checks for orchestrators, not for human curiosity alone.
-- Use architecture decision records for choices that affect multiple teams or production operations.
-
-## Examples
-
-### Architecture Decision Record Excerpt
-
-| Field | Example |
-|---|---|
-| Decision | Use typed HttpClient for cohesive downstream APIs |
-| Status | Accepted |
-| Context | The API calls a billing service on the critical request path |
-| Consequence | Better testability and encapsulated resilience policy; more classes to own |
-| Review trigger | New downstream endpoint, latency SLO change, or incident involving billing |
-
-### Production Review Evidence
-
-- Unit tests for domain and application rules.
-- Integration tests for HTTP contract and middleware behavior.
-- Load test showing latency, CPU, memory, and dependency behavior at target concurrency.
-- Dashboard covering request rate, error rate, duration, saturation, dependency calls, and log volume.
-- Runbook explaining rollback, configuration ownership, and incident triage.
-
-
-## Code Snippets
+Validation is often reduced to slapping `[Required]` attributes on request DTOs.
 
 ```csharp
-public sealed record CreateOrderRequest(
-    [property: Required] string CustomerId,
-    [property: MinLength(1)] IReadOnlyList<CreateOrderLineRequest> Lines);
+public class CreateCustomerRequest
+{
+    [Required]
+    public string Name { get; set; }
 
+    [EmailAddress]
+    public string Email { get; set; }
+}
+```
+
+This superficial approach creates four architectural disasters:
+
+1. **Leaky Domain**: Validation logic is coupled to the HTTP presentation layer. If the same entity is created via a RabbitMQ consumer or CLI tool, validation is bypassed entirely.
+2. **Scattered Business Invariants**: Complex business rules (e.g., "A customer cannot have more than 3 pending orders unless they are a VIP") are mixed with basic format checks (e.g., "Email is not null").
+3. **ReDoS Vulnerabilities**: Unbounded regular expressions in validators can be exploited to cause 100% CPU lockups (Regular Expression Denial of Service).
+4. **Inconsistent Error Formats**: Different endpoints return different validation error schemas, breaking mobile and web clients.
+
+As a Principal Engineer, you structure validation into **three distinct layers with clear ownership, lifetime, and error semantics**.
+
+---
+
+# Production Story
+
+Thursday.
+
+04:30 PM.
+
+Nova Commerce experiences a severe outage during a flash sale.
+
+CPU utilization on all Web API nodes hits 100%. Latency climbs from 50ms to 45 seconds. Kestrel stops accepting new TCP connections.
+
+### The Root Cause:
+A developer added an email validation attribute using a naive regex:
+
+```csharp
+[RegularExpression(@"^([a-zA-Z0-9_\-\.]+)@([a-zA-Z0-9_\-\.]+)\.([a-zA-Z]{2,5})$")]
+public string Email { get; set; }
+```
+
+A bot sent 5,000 requests with malicious input strings containing repetitive special characters:
+
+```
+"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa!@gmail.com"
+```
+
+The .NET regex engine experienced catastrophic backtracking (exponential $O(2^n)$ algorithmic complexity), pinning all CPU cores and starving the thread pool.
+
+The outage was not caused by high traffic. It was caused by unvetted, synchronous input validation on the hot path.
+
+---
+
+# The Three Levels of Validation
+
+A Principal Engineer separates validation into three strict architectural boundaries:
+
+```
+Incoming Request
+       │
+       ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 1. Input / Contract Validation (Application Layer)          │
+│    • Is the JSON well-formed?                               │
+│    • Is the email format valid?                             │
+│    • Is the price greater than zero?                        │
+│    • Tool: FluentValidation                                 │
+│    • Output: 400 Bad Request / 422 Unprocessable Entity     │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 2. Application / Cross-Entity Validation (Application Layer)│
+│    • Does the referenced CustomerId exist in the database?  │
+│    • Is the SKU in stock in this warehouse?                 │
+│    • Tool: Application Services / CQRS Handlers             │
+│    • Output: 404 Not Found / 409 Conflict                   │
+└──────────────────────────────┬──────────────────────────────┘
+                               │
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│ 3. Domain Invariants (Domain Layer)                         │
+│    • Can an Order be Cancelled after it has Shipped?        │
+│    • Is the total discount greater than the order subtotal? │
+│    • Tool: Rich Domain Entities & Value Objects             │
+│    • Output: Domain Result / Invariant Guard Violation      │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+# Level 1: FluentValidation in Clean Architecture
+
+Why use **FluentValidation** instead of `DataAnnotations`?
+
+- **Separation of Concerns**: DTOs remain pure data containers without framework attributes.
+- **Complex Validation Rules**: Supports conditional validation, custom rules, and async operations.
+- **Testability**: Validators can be unit-tested in isolation without mocking HTTP contexts.
+
+### The Request DTO:
+```csharp
+public sealed record CreateOrderRequest(
+    Guid CustomerId,
+    List<OrderItemDto> Items,
+    string ShippingAddress,
+    string? CouponCode);
+```
+
+### The FluentValidator:
+```csharp
 public sealed class CreateOrderRequestValidator : AbstractValidator<CreateOrderRequest>
 {
     public CreateOrderRequestValidator()
     {
-        RuleFor(x => x.CustomerId).NotEmpty().MaximumLength(64);
-        RuleFor(x => x.Lines).NotEmpty().Must(x => x.Count <= 100);
+        // Stop on first failure per rule to save CPU
+        RuleLevelCascadeMode = CascadeMode.Stop;
+
+        RuleFor(x => x.CustomerId)
+            .NotEmpty()
+            .WithMessage("CustomerId is required.");
+
+        RuleFor(x => x.Items)
+            .NotEmpty()
+            .WithMessage("Order must contain at least one item.")
+            .Must(items => items.Count <= 100)
+            .WithMessage("Order cannot exceed 100 distinct items.");
+
+        RuleForEach(x => x.Items).ChildRules(item =>
+        {
+            item.RuleFor(i => i.Quantity)
+                .GreaterThan(0)
+                .LessThanOrEqualTo(1000);
+
+            item.RuleFor(i => i.UnitPrice)
+                .GreaterThan(0);
+        });
+
+        RuleFor(x => x.ShippingAddress)
+            .NotEmpty()
+            .MaximumLength(500);
     }
 }
 ```
 
-## Architecture Notes
+---
 
-The architecture should keep decisions visible. A principal engineer should be able to point to the code and answer: where does policy live, where do side effects happen, where does the public contract get shaped, and where will the team look during an incident?
+# Level 3: Domain Invariants in Rich Domain Entities
 
-Recommended baseline:
+Domain entities should **never enter an invalid state**.
 
-```text
-src/
-  Api/              HTTP, middleware, authentication, OpenAPI, controllers/endpoints
-  Application/      Use cases, ports, validation orchestration, DTOs
-  Domain/           Entities, value objects, invariants, domain services
-  Infrastructure/   EF Core, external HTTP clients, cloud adapters, logging adapters
-  Contracts/        Public request/response contracts if shared deliberately
-tests/
-  UnitTests/
-  IntegrationTests/
-  ArchitectureTests/
+If an entity can be created with invalid state, your domain model is anemic and vulnerable to corruption.
+
+### Value Object with Invariant Guards:
+```csharp
+public sealed class Money : ValueObject
+{
+    public decimal Amount { get; }
+    public string Currency { get; }
+
+    private Money(decimal amount, string currency)
+    {
+        Amount = amount;
+        Currency = currency;
+    }
+
+    public static Result<Money, DomainError> Create(decimal amount, string currency)
+    {
+        if (amount < 0)
+            return Result<Money, DomainError>.Failure(
+                new DomainError("INVALID_AMOUNT", "Money amount cannot be negative."));
+
+        if (string.IsNullOrWhiteSpace(currency) || currency.Length != 3)
+            return Result<Money, DomainError>.Failure(
+                new DomainError("INVALID_CURRENCY", "Currency must be a 3-letter ISO code."));
+
+        return Result<Money, DomainError>.Success(new Money(amount, currency.ToUpperInvariant()));
+    }
+}
 ```
 
-Architecture notes for this module:
+### Domain Entity Protecting Business Rules:
+```csharp
+public sealed class Order : AggregateRoot
+{
+    public OrderStatus Status { get; private set; }
+    public Money Total { get; private set; }
 
-- Runtime behavior must be knowable from code and docs.
-- Security boundaries must be enforced close to the request boundary and repeated in domain rules where invariants require it.
-- Maintainability comes from fewer hidden dependencies and clear ownership.
-- Scalability comes from bounded work, async I/O, stateless request handling, and thoughtful dependency limits.
-- Cost control is an architecture concern when telemetry, retries, and cloud resources scale with traffic.
+    public Result<Unit, DomainError> Cancel()
+    {
+        if (Status == OrderStatus.Shipped)
+        {
+            return Result<Unit, DomainError>.Failure(
+                new DomainError("CANNOT_CANCEL_SHIPPED_ORDER", "Shipped orders cannot be cancelled."));
+        }
 
-## Principal Thinking
+        Status = OrderStatus.Cancelled;
+        return Result<Unit, DomainError>.Success(Unit.Value);
+    }
+}
+```
 
-A principal engineer asks different questions from an implementation owner:
+---
 
-- Why this approach, and what evidence would change our mind?
-- Why not the simpler built-in default?
-- Why not a more sophisticated platform pattern?
-- When should we avoid this design?
-- What failure mode does this design make easier to detect?
-- What failure mode does it hide?
-- How would Microsoft implement this for a broad Azure customer base?
-- How would Amazon implement this for high-scale, operationally strict service ownership?
+# HTTP Status Codes: 400 vs 422 vs 409
 
-Microsoft-style implementation usually emphasizes documented contracts, platform integration, secure defaults, compatibility, and tooling support. Amazon-style implementation usually emphasizes service ownership, operational metrics, blast-radius reduction, explicit runbooks, and continuous correction through incidents. A strong principal engineer can combine both instincts without cargo-culting either company.
+A Principal Engineer establishes precise HTTP status code semantics for validation failures:
 
-## Review Questions
+| Status Code | RFC Name | When to Return |
+|---|---|---|
+| **400** | Bad Request | Syntactic failure: Malformed JSON, unparseable GUID, invalid date format. |
+| **422** | Unprocessable Entity | Semantic validation failure: JSON is valid, but input fields violate business constraints (e.g. Quantity is negative). |
+| **404** | Not Found | Reference validation failure: Referenced foreign key does not exist (e.g. `CustomerId` not found). |
+| **409** | Conflict | State validation failure: Invariant conflict (e.g. Email already registered, order already processed). |
 
-1. What production failure is most likely if this area is implemented casually?
-2. Which behavior is part of the public contract, and how is it tested?
-3. Which runtime cost grows with request volume?
-4. Which cloud platform feature changes the design assumption?
-5. How would you explain the trade-off to a CTO, an SRE, and a feature team?
-6. What would cause you to revisit this decision in six months?
+---
 
-## References
+# Performance & ReDoS Protection
 
-- [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/)
-- [ASP.NET Core fundamentals](https://learn.microsoft.com/aspnet/core/fundamentals/)
-- [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
-- [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/)
-- [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/)
-- Robert C. Martin, Clean Architecture
-- Mark Seemann, Dependency Injection Principles, Practices, and Patterns
-- Jeffrey Richter, CLR via C#
-- Andrew Lock, ASP.NET Core in Action
-- Martin Kleppmann, Designing Data-Intensive Applications
-- Martin Fowler architecture essays
-- Nick Chapsas, advanced .NET and ASP.NET Core content
+When using Regular Expressions in validators:
 
-## Summary
+### The Vulnerability:
+```csharp
+// DANGEROUS: Unbounded regex evaluation can hang CPU
+RuleFor(x => x.Code).Matches(@"^[A-Z0-9]+$");
+```
 
-Validation is part of the launch foundation for an enterprise-grade public API. The principal-level expectation is not memorizing framework APIs; it is understanding runtime behavior, making trade-offs explicit, proving the design with tests and telemetry, and leaving behind a system that other engineers can operate confidently.
+### The Principal Solution (.NET 7+ `[GeneratedRegex]` with Timeout):
+```csharp
+public static partial class RegexPatterns
+{
+    [GeneratedRegex(@"^[A-Z0-9]{3,20}$", RegexOptions.Compiled | RegexOptions.CultureInvariant, matchTimeoutMilliseconds: 100)]
+    public static partial Regex ProductCodeRegex();
+}
+```
+
+```csharp
+RuleFor(x => x.Code)
+    .Must(code => RegexPatterns.ProductCodeRegex().IsMatch(code))
+    .WithMessage("Product code format is invalid.");
+```
+
+---
+
+# Common Mistakes
+
+❌ **Injecting DbContext into FluentValidators for Heavy Queries**
+```csharp
+// ANTI-PATTERN: Running complex SQL queries inside a validator during request binding
+RuleFor(x => x.Email).MustAsync(async (email, ct) => await dbContext.Users.AnyAsync(u => u.Email == email));
+```
+✅ **Keep Validators Pure & Synchronous; Perform Database Checks in Application Services / Command Handlers.**
+
+❌ **Automatic Validation Action Filters that Catch and Hide Validation Pipeline Execution**
+```csharp
+// Relying on obscure magic filters makes debugging request flow and error customization difficult.
+```
+✅ **Explicitly Validate in CQRS Pipeline Behaviors (e.g. MediatR `ValidationBehavior<TRequest, TResponse>`) or Minimal API Endpoint Filters.**
+
+❌ **Allowing Invariant Validation in UI/DTO Only**
+```csharp
+// If an attacker bypasses the API and calls the domain service directly, invalid state is persisted.
+```
+✅ **Enforce Invariants Inside Domain Entities and Value Objects.**
+
+---
+
+# Architect's Decision
+
+### Scenario
+Nova Commerce needs an input and business validation architecture that scales across 100+ endpoints with consistent RFC 7807 problem details responses and zero domain layer coupling.
+
+### Decision:
+1. **Contract Validation**: FluentValidation registered in the Application layer as Singletons.
+2. **Orchestration**: CQRS Validation Pipeline Behavior automatically validates requests before executing the command handler.
+3. **Format**: Returns `422 Unprocessable Entity` formatted as RFC 7807 `ValidationProblemDetails` containing an `errors` dictionary grouped by property name.
+4. **Domain Integrity**: All domain entities and value objects enforce internal invariants using private constructors and factory methods returning `Result<T, DomainError>`.
+
+---
+
+# Principal Thinking
+
+| Level | Perspective | Focus |
+|---|---|---|
+| **Junior** | DataAnnotations | "I added [Required] and [MaxLength] attributes to my request model." |
+| **Senior** | FluentValidation | "I moved validation to FluentValidation rules in the application layer." |
+| **Principal** | Multi-Tiered Integrity | "How are format validation, cross-aggregate integrity, and domain invariants separated? Are validators CPU-safe against ReDoS? Is validation reusable across HTTP, gRPC, and message brokers?" |
+
+---
+
+# Learning Resources & References
+
+### Authoritative Documentation
+- [FluentValidation Official Documentation](https://docs.fluentvalidation.net/)
+- [Domain-Driven Design: Value Objects & Invariants](https://martinfowler.com/bliki/ValueObject.html)
+- [CWE-1333: Inefficient Regular Expression Complexity (ReDoS)](https://cwe.mitre.org/data/definitions/1333.html)
+
+---
+
+# Self Assessment
+
+1. Why should FluentValidation validators live in the Application layer rather than the Presentation/API layer?
+2. What is the fundamental difference between an input validation error (422) and a domain invariant violation?
+3. How can a poorly written Regular Expression in a validator cause a Denial of Service attack?
+4. Why should you avoid executing asynchronous database queries inside FluentValidation rules?
+5. How does the Result Pattern allow domain entities to reject invalid state without throwing CLR exceptions?

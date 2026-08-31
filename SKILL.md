@@ -373,27 +373,33 @@ Do not endlessly add topics.
 ## 17. Current Completed Topics
 
 ```text
-05 - Clean Architecture
-06 - SOLID
-07 - Dependency Injection
-08 - Middleware
-08A - Inside the ASP.NET Core Pipeline
-09 - Configuration
-09A - Configuration Providers Internals
-10 - Options Pattern
-10A - The Options Ecosystem
+Sprint 01: 01 - Production-Ready-WebAPI — COMPLETED
+Sprint 02: 02 - Authentication & Security — COMPLETED
+Sprint 03: 03 - Storage & Streaming — COMPLETED
+  - 01-Story to 04-Storage-Architecture
+  - 05-Blob-Storage-Architecture & 05A-Inside-Blob-Storage-Internals
+  - 06-System-IO-Pipelines & 06A-Inside-Pipelines-Memory-Internals
+  - 07-Chunked-And-Resumable-Uploads & 08-HTTP-Range-Requests-Streaming
+  - 09-Direct-Client-Upload-SAS & 10-CDN-Edge-Caching-Storage
+  - 11-Storage-Security-Checklist & 12-Hands-On-Storage-Labs
+  - 13-Storage-Incident (50GB OOM Post-Mortem)
+  - 14-Principal-Defense-Questions & 15-Interview-Scenarios
+  - 16-Summary & 17-Resources
 ```
 
-Current next topic:
+Current next topic / sprint:
 
 ```text
-11 - Logging
+Sprint 04: 04 - Database Performance & Relational Internals
 ```
 
 Challenge status:
 
 ```text
-Challenge 01 - IN PROGRESS
+Challenge 01 - COMPLETED
+Challenge 02 - COMPLETED
+Challenge 03 - COMPLETED
+Challenge 04 - NEXT
 ```
 
 ---

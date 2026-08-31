@@ -1,248 +1,83 @@
-# Resources
+# 27 - Curated Learning Resources & Authoritative References
 
-## Purpose
+> "A Principal Engineer does not rely on hearsay or second-hand blog summaries.
+>
+> They read official documentation, study runtime source code, and ground their decisions in published industry standards."
 
-Curate authoritative references for deep ASP.NET Core and platform engineering study. This module assumes the reader already builds ASP.NET Core systems professionally. The goal is to sharpen engineering judgment: why a design exists, how it behaves under load, how it fails, and what evidence a principal engineer needs before launch.
+---
 
-> [!IMPORTANT]
-> The standard is not whether the API works on a developer machine. The standard is whether the design remains understandable, observable, secure, and operable when customers, incidents, and organizational pressure arrive.
+# 1. Official Microsoft Documentation & Guides
 
-## Table of Contents
+### Core Architecture & Fundamentals
+- [ASP.NET Core Fundamentals Overview](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/)
+- [Microsoft REST API Guidelines (Official GitHub)](https://github.com/microsoft/api-guidelines/blob/vNext/Guidelines.md)
+- [Clean Architecture & Microservices Architecture e-Book](https://learn.microsoft.com/en-us/dotnet/architecture/modern-web-apps-azure/)
+- [Azure Architecture Center: Cloud Design Patterns](https://learn.microsoft.com/en-us/azure/architecture/patterns/)
+- [Reliability Patterns in Cloud Systems](https://learn.microsoft.com/en-us/azure/architecture/framework/resiliency/design-patterns)
 
-- [Purpose](#purpose)
-- [Theory](#theory)
-- [Deep Dive](#deep-dive)
-- [How It Works Internally](#how-it-works-internally)
-- [Production Usage](#production-usage)
-- [Common Mistakes](#common-mistakes)
-- [Trade-offs](#trade-offs)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-- [Code Snippets](#code-snippets)
-- [Architecture Notes](#architecture-notes)
-- [Principal Thinking](#principal-thinking)
-- [Review Questions](#review-questions)
-- [References](#references)
-- [Summary](#summary)
+### Diagnostics, Performance & Telemetry
+- [High-Performance Logging with LoggerMessage Source Generators](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/logger-message-generator)
+- [Diagnostics & Performance Counters in .NET (`dotnet-counters`, `dotnet-dump`)](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/tools-overview)
+- [Make HTTP Requests Using IHttpClientFactory in ASP.NET Core](https://learn.microsoft.com/en-us/dotnet/core/extensions/httpclient-factory)
+- [Building Resilient HTTP Requests with Polly & Microsoft.Extensions.Resilience](https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience)
 
-## Theory
+---
 
-The production-ready Web API foundation is a set of architectural constraints and runtime behaviors, not a checklist of NuGet packages. A principal engineer treats each framework feature as a design decision with blast radius across security, operability, performance, cost, and long-term maintainability.
+# 2. .NET Framework Source Code Repositories
 
-Core ideas in this module:
+Studying official framework source code is the fastest way to understand runtime behavior and design trade-offs:
 
-- Microsoft Learn
-- Azure Architecture Center
-- books
-- talks
-- blogs
-
-A mature API design separates policy from detail. HTTP, persistence, messaging, cloud configuration, logging, and documentation are details that serve the business capability. They must be explicit, replaceable where necessary, and observable when they fail.
-
-## Deep Dive
-
-| Concern | Principal-level question |
+| Component | Source Code Location |
 |---|---|
-| Microsoft Learn | Runtime behavior, production failure mode, test evidence, and decision owner |
-| Azure Architecture Center | Runtime behavior, production failure mode, test evidence, and decision owner |
-| books | Runtime behavior, production failure mode, test evidence, and decision owner |
-| talks | Runtime behavior, production failure mode, test evidence, and decision owner |
-| blogs | Runtime behavior, production failure mode, test evidence, and decision owner |
+| **ASP.NET Core Pipeline & Kestrel** | [github.com/dotnet/aspnetcore](https://github.com/dotnet/aspnetcore/tree/main/src) |
+| **Dependency Injection Container** | [dotnet/runtime: Microsoft.Extensions.DependencyInjection](https://github.com/dotnet/runtime/tree/main/src/libraries/Microsoft.Extensions.DependencyInjection) |
+| **Logging Subsystem** | [dotnet/runtime: Microsoft.Extensions.Logging](https://github.com/dotnet/runtime/tree/main/src/libraries/Microsoft.Extensions.Logging) |
+| **Configuration & Options Ecosystem** | [dotnet/runtime: Microsoft.Extensions.Options](https://github.com/dotnet/runtime/tree/main/src/libraries/Microsoft.Extensions.Options) |
+| **SocketsHttpHandler & Networking** | [dotnet/runtime: System.Net.Http](https://github.com/dotnet/runtime/tree/main/src/libraries/System.Net.Http) |
+| **Exception Handling Middleware** | [dotnet/aspnetcore: ExceptionHandlerMiddlewareImpl.cs](https://github.com/dotnet/aspnetcore/blob/main/src/Middleware/Diagnostics/src/ExceptionHandler/ExceptionHandlerMiddlewareImpl.cs) |
 
-Deep understanding requires following the request from socket acceptance through endpoint execution, dependency resolution, validation, exception translation, response writing, logging, metrics, and cloud platform feedback. The interesting engineering work happens at boundaries: when dependencies are slow, configuration is wrong, clients misuse the API, or the team needs to evolve the contract without breaking revenue-generating consumers.
+---
 
-Performance impact is rarely isolated. A small allocation in middleware can multiply by every request. A missing timeout can exhaust threads. A verbose log property can create significant Application Insights or Log Analytics cost. A poorly scoped dependency can leak memory or corrupt tenant state. A vague error contract can turn every client integration into custom support work.
+# 3. Official RFC & IETF Specifications
 
-## How It Works Internally
+- [RFC 7807: Problem Details for HTTP APIs](https://datatracker.ietf.org/doc/html/rfc7807)
+- [RFC 9457: Problem Details for HTTP APIs (Updated Standard)](https://datatracker.ietf.org/doc/html/rfc9457)
+- [RFC 9110: HTTP Semantics (Replaces RFC 7231)](https://datatracker.ietf.org/doc/html/rfc9110)
+- [RFC 8594: The Sunset HTTP Header Field](https://datatracker.ietf.org/doc/html/rfc8594)
+- [IETF Draft: The Idempotency-Key HTTP Header Field](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header)
+- [W3C Trace Context Specification (Distributed Tracing)](https://www.w3.org/TR/trace-context/)
 
-ASP.NET Core builds a host, loads configuration providers in order, constructs an IServiceProvider, starts Kestrel, and executes requests through a composed middleware pipeline. Endpoint routing selects metadata and delegates. Model binding and validation prepare inputs. Application services execute use cases. Infrastructure adapters talk to databases and remote services. Result execution serializes responses and emits telemetry.
+---
 
-Internal mechanics to reason about:
+# 4. Essential Books for Principal Engineers
 
-- The dependency injection container resolves constructor graphs and enforces lifetimes only when scope validation is enabled.
-- Middleware executes in registration order on the way in and reverse order on the way out.
-- Async request handling uses the .NET thread pool; blocking work can starve unrelated requests.
-- Configuration values are layered; later providers override earlier providers.
-- Logging providers receive structured events, scopes, categories, and levels; downstream sinks decide storage and cost.
-- Exceptions are expensive control-flow mechanisms and should represent unexpected failure, not ordinary business decisions.
+1. **Designing Data-Intensive Applications** — *Martin Kleppmann*  
+   *The definitive guide to reliability, scalability, data modeling, concurrency, and distributed systems.*
+2. **Dependency Injection Principles, Practices, and Patterns** — *Mark Seemann & Steven van Deursen*  
+   *Deep dive into object composition, interceptors, lifetimes, and anti-patterns.*
+3. **Clean Architecture: A Craftsman's Guide to Software Structure and Design** — *Robert C. Martin*  
+   *The foundational blueprint for separating domain policies from technical details.*
+4. **CLR via C# (4th Edition)** — *Jeffrey Richter*  
+   *Mastery of CLR memory management, garbage collection, threading, and runtime internals.*
+5. **ASP.NET Core in Action (3rd Edition)** — *Andrew Lock*  
+   *Comprehensive, real-world guide to modern ASP.NET Core internal mechanics and web API architecture.*
 
-```mermaid
-flowchart TD
-    Decision[Engineering Decision] --> Runtime[Runtime Behavior]
-    Runtime --> Ops[Operations]
-    Runtime --> Security[Security]
-    Runtime --> Cost[Cost]
-    Ops --> Feedback[Production Feedback]
-    Feedback --> Decision
-```
+---
 
-## Production Usage
+# 5. Diagnostic Tools & Profilers
 
-Use this capability as part of the launch foundation. Define the production contract, add tests around externally visible behavior, record the operational assumptions, and make the behavior visible through telemetry. Production usage means the team knows how the feature behaves during deploys, scale-out, dependency failure, secret rotation, and partial regional outage.
+- **BenchmarkDotNet**: Industry-standard micro-benchmarking library for measuring memory allocations and CPU cycles.
+- **dotnet-dump**: Cross-platform CLI tool for capturing and analyzing managed process memory dumps.
+- **dotnet-trace**: Performance profiling tool using EventPipe to capture CPU sampling and allocation stacks.
+- **dotnet-counters**: Real-time performance monitoring tool for tracking GC rates, thread-pool queues, and request rates.
+- **PerfView**: Deep Windows/CLR performance analysis tool for investigating GC pauses and lock contention.
+- **NetArchTest.Rules**: Fluent library for writing automated architecture unit tests in CI/CD.
 
-Operational checklist:
+---
 
-- Define the owner and review cadence.
-- Document environment-specific behavior.
-- Add observable signals: log events, metrics, traces, health checks, or dashboards.
-- Add failure-mode tests where the blast radius is high.
-- Record rollout and rollback instructions.
-- Estimate cost impact before high-volume launch.
+# 6. Community & Video Deep Dives
 
-## Common Mistakes
-
-| Mistake | Why it hurts in production | Better approach |
-|---|---|---|
-| Treating framework defaults as architecture | Defaults optimize for broad usability, not your launch risk | Make explicit decisions and document them |
-| Mixing domain logic with transport code | Makes tests brittle and contract evolution risky | Keep use cases independent of HTTP details |
-| Ignoring cancellation and timeouts | Slow dependencies can consume threads and sockets | Propagate CancellationToken and bound every call |
-| Logging unbounded payloads | Increases cost and may leak sensitive data | Log identifiers, states, and safe dimensions |
-| Adding abstractions for style only | Creates indirection without resilience | Add abstractions where they protect policy or enable tests |
-
-## Trade-offs
-
-| Decision pressure | Optimize for | Cost |
-|---|---|---|
-| Fast launch | Simpler architecture and fewer moving parts | Less isolation if requirements grow quickly |
-| Enterprise contract stability | Versioning, compatibility tests, documentation | More governance and slower breaking changes |
-| Deep observability | Faster incident response | Storage cost and data classification work |
-| Strong validation | Safer inputs and clearer client errors | More rules to maintain and test |
-| Cloud-native behavior | Better scaling and operations | Requires platform knowledge and automated verification |
-
-```mermaid
-flowchart TD
-    A[Choose approach] --> B{Is it a stable public contract?}
-    B -->|Yes| C[Optimize for compatibility and explicit governance]
-    B -->|No| D[Optimize for simplicity and fast feedback]
-    C --> E[Record decision]
-    D --> E
-    E --> F[Verify with tests and telemetry]
-```
-
-## Best Practices
-
-- Make external contracts explicit: OpenAPI, status codes, ProblemDetails, versioning, pagination, and error semantics.
-- Prefer simple architectural boundaries with strong tests over elaborate layering with weak ownership.
-- Design for failure first: dependency timeout, invalid configuration, expired secret, partial outage, and noisy client.
-- Use structured logs and stable dimensions; avoid high-cardinality values unless necessary.
-- Validate configuration on startup for critical settings.
-- Keep middleware order intentional and reviewed.
-- Define health checks for orchestrators, not for human curiosity alone.
-- Use architecture decision records for choices that affect multiple teams or production operations.
-
-## Examples
-
-### Curated Resource Map
-
-| Area | Resource | Why it matters |
-|---|---|---|
-| ASP.NET Core | [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/) | Authoritative runtime and framework behavior |
-| API guidance | [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines) | Public API design consistency |
-| Azure architecture | [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/) | Cloud trade-offs, reliability, security, and cost |
-| Patterns | [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/) | Resilience and scalability vocabulary |
-| Clean Architecture | Robert C. Martin, Clean Architecture | Dependency direction and policy separation |
-| Runtime | CLR via C# | Memory, threading, exceptions, and runtime mechanics |
-| Data systems | Designing Data-Intensive Applications | Distributed data and consistency thinking |
-| ASP.NET Core depth | ASP.NET Core in Action | Practical framework internals |
-| Modern .NET | Nick Chapsas videos and workshops | Current .NET implementation patterns |
-| Architecture writing | Martin Fowler essays | Decision records, evolutionary architecture, integration patterns |
-
-Study strategy:
-- Read Microsoft documentation first for correctness.
-- Use books to build durable mental models.
-- Use videos for implementation nuance, then validate against official docs.
-- Convert every important lesson into an architecture decision record or checklist item.
-
-
-## Code Snippets
-
-```csharp
-public sealed class CreateOrderHandler
-{
-    private readonly IOrderRepository _orders;
-    private readonly TimeProvider _clock;
-
-    public CreateOrderHandler(IOrderRepository orders, TimeProvider clock)
-    {
-        _orders = orders;
-        _clock = clock;
-    }
-
-    public async Task<Result<OrderDto>> HandleAsync(CreateOrderCommand command, CancellationToken cancellationToken)
-    {
-        var order = Order.Create(command.CustomerId, command.Lines, _clock.GetUtcNow());
-        await _orders.SaveAsync(order, cancellationToken);
-        return Result.Success(OrderDto.From(order));
-    }
-}
-```
-
-## Architecture Notes
-
-The architecture should keep decisions visible. A principal engineer should be able to point to the code and answer: where does policy live, where do side effects happen, where does the public contract get shaped, and where will the team look during an incident?
-
-Recommended baseline:
-
-```text
-src/
-  Api/              HTTP, middleware, authentication, OpenAPI, controllers/endpoints
-  Application/      Use cases, ports, validation orchestration, DTOs
-  Domain/           Entities, value objects, invariants, domain services
-  Infrastructure/   EF Core, external HTTP clients, cloud adapters, logging adapters
-  Contracts/        Public request/response contracts if shared deliberately
-tests/
-  UnitTests/
-  IntegrationTests/
-  ArchitectureTests/
-```
-
-Architecture notes for this module:
-
-- Runtime behavior must be knowable from code and docs.
-- Security boundaries must be enforced close to the request boundary and repeated in domain rules where invariants require it.
-- Maintainability comes from fewer hidden dependencies and clear ownership.
-- Scalability comes from bounded work, async I/O, stateless request handling, and thoughtful dependency limits.
-- Cost control is an architecture concern when telemetry, retries, and cloud resources scale with traffic.
-
-## Principal Thinking
-
-A principal engineer asks different questions from an implementation owner:
-
-- Why this approach, and what evidence would change our mind?
-- Why not the simpler built-in default?
-- Why not a more sophisticated platform pattern?
-- When should we avoid this design?
-- What failure mode does this design make easier to detect?
-- What failure mode does it hide?
-- How would Microsoft implement this for a broad Azure customer base?
-- How would Amazon implement this for high-scale, operationally strict service ownership?
-
-Microsoft-style implementation usually emphasizes documented contracts, platform integration, secure defaults, compatibility, and tooling support. Amazon-style implementation usually emphasizes service ownership, operational metrics, blast-radius reduction, explicit runbooks, and continuous correction through incidents. A strong principal engineer can combine both instincts without cargo-culting either company.
-
-## Review Questions
-
-1. What production failure is most likely if this area is implemented casually?
-2. Which behavior is part of the public contract, and how is it tested?
-3. Which runtime cost grows with request volume?
-4. Which cloud platform feature changes the design assumption?
-5. How would you explain the trade-off to a CTO, an SRE, and a feature team?
-6. What would cause you to revisit this decision in six months?
-
-## References
-
-- [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/)
-- [ASP.NET Core fundamentals](https://learn.microsoft.com/aspnet/core/fundamentals/)
-- [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
-- [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/)
-- [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/)
-- Robert C. Martin, Clean Architecture
-- Mark Seemann, Dependency Injection Principles, Practices, and Patterns
-- Jeffrey Richter, CLR via C#
-- Andrew Lock, ASP.NET Core in Action
-- Martin Kleppmann, Designing Data-Intensive Applications
-- Martin Fowler architecture essays
-- Nick Chapsas, advanced .NET and ASP.NET Core content
-
-## Summary
-
-Resources is part of the launch foundation for an enterprise-grade public API. The principal-level expectation is not memorizing framework APIs; it is understanding runtime behavior, making trade-offs explicit, proving the design with tests and telemetry, and leaving behind a system that other engineers can operate confidently.
+- **Stephen Toub & David Fowler**: Deep dives into ASP.NET Core runtime architecture, `SocketsHttpHandler`, and asynchronous plumbing.
+- **Nick Chapsas (Keep Coding / Dometrain)**: Practical modern .NET architecture, zero-allocation patterns, and API best practices.
+- **Milan Jovanović**: Clean Architecture, CQRS, and domain-driven design tutorials in .NET.
+- **OpenTelemetry Community**: Open standard observability ecosystem documentation and reference implementations.

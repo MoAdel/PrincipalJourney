@@ -1,233 +1,210 @@
-# Health Checks
+# 19 - Health Checks & Container Orchestration Probes
 
-## Purpose
+> "A health check is not an informational webpage for humans.
+>
+> It is an automated life-or-death signal consumed by container orchestrators (Kubernetes, Azure Container Apps) to route traffic, restart deadlocks, and isolate failures."
 
-Expose truthful health signals for orchestrators and operators. This module assumes the reader already builds ASP.NET Core systems professionally. The goal is to sharpen engineering judgment: why a design exists, how it behaves under load, how it fails, and what evidence a principal engineer needs before launch.
+---
 
-> [!IMPORTANT]
-> The standard is not whether the API works on a developer machine. The standard is whether the design remains understandable, observable, secure, and operable when customers, incidents, and organizational pressure arrive.
+# Why Should a Principal Engineer Care?
 
-## Table of Contents
+In modern cloud-native architectures, applications run behind load balancers and container orchestrators (Kubernetes, Azure Container Apps, AWS ECS).
 
-- [Purpose](#purpose)
-- [Theory](#theory)
-- [Deep Dive](#deep-dive)
-- [How It Works Internally](#how-it-works-internally)
-- [Production Usage](#production-usage)
-- [Common Mistakes](#common-mistakes)
-- [Trade-offs](#trade-offs)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-- [Code Snippets](#code-snippets)
-- [Architecture Notes](#architecture-notes)
-- [Principal Thinking](#principal-thinking)
-- [Review Questions](#review-questions)
-- [References](#references)
-- [Summary](#summary)
+If you implement health checks carelessly:
+- **Death Spiral Outage**: A transient database slowdown causes Kubernetes to fail Liveness probes and kill all API pods simultaneously.
+- **Traffic Routing to Dead Pods**: Traffic continues hitting deadlocked or uninitialized pods, producing 502/504 errors for customers.
+- **Dependency DDOS**: 200 microservice pods polling the database every 3 seconds for health checks generate thousands of useless SQL queries per second.
 
-## Theory
+As a Principal Engineer, you design a **three-tier health probe architecture** separating **Startup, Liveness, and Readiness**.
 
-The production-ready Web API foundation is a set of architectural constraints and runtime behaviors, not a checklist of NuGet packages. A principal engineer treats each framework feature as a design decision with blast radius across security, operability, performance, cost, and long-term maintainability.
+---
 
-Core ideas in this module:
+# Production Story
 
-- liveness
-- readiness
-- dependencies
-- timeouts
-- Azure probes
+Saturday.
 
-A mature API design separates policy from detail. HTTP, persistence, messaging, cloud configuration, logging, and documentation are details that serve the business capability. They must be explicit, replaceable where necessary, and observable when they fail.
+03:30 AM.
 
-## Deep Dive
+The primary database instance experiences a momentary 10-second I/O pause during an automated backup snapshot.
 
-| Concern | Principal-level question |
-|---|---|
-| liveness | Runtime behavior, production failure mode, test evidence, and decision owner |
-| readiness | Runtime behavior, production failure mode, test evidence, and decision owner |
-| dependencies | Runtime behavior, production failure mode, test evidence, and decision owner |
-| timeouts | Runtime behavior, production failure mode, test evidence, and decision owner |
-| Azure probes | Runtime behavior, production failure mode, test evidence, and decision owner |
+Nova Commerce's 60 Kubernetes pods were configured with a single naive health check endpoint:
 
-Deep understanding requires following the request from socket acceptance through endpoint execution, dependency resolution, validation, exception translation, response writing, logging, metrics, and cloud platform feedback. The interesting engineering work happens at boundaries: when dependencies are slow, configuration is wrong, clients misuse the API, or the team needs to evolve the contract without breaking revenue-generating consumers.
-
-Performance impact is rarely isolated. A small allocation in middleware can multiply by every request. A missing timeout can exhaust threads. A verbose log property can create significant Application Insights or Log Analytics cost. A poorly scoped dependency can leak memory or corrupt tenant state. A vague error contract can turn every client integration into custom support work.
-
-## How It Works Internally
-
-ASP.NET Core builds a host, loads configuration providers in order, constructs an IServiceProvider, starts Kestrel, and executes requests through a composed middleware pipeline. Endpoint routing selects metadata and delegates. Model binding and validation prepare inputs. Application services execute use cases. Infrastructure adapters talk to databases and remote services. Result execution serializes responses and emits telemetry.
-
-Internal mechanics to reason about:
-
-- The dependency injection container resolves constructor graphs and enforces lifetimes only when scope validation is enabled.
-- Middleware executes in registration order on the way in and reverse order on the way out.
-- Async request handling uses the .NET thread pool; blocking work can starve unrelated requests.
-- Configuration values are layered; later providers override earlier providers.
-- Logging providers receive structured events, scopes, categories, and levels; downstream sinks decide storage and cost.
-- Exceptions are expensive control-flow mechanisms and should represent unexpected failure, not ordinary business decisions.
-
-```mermaid
-flowchart TD
-    Decision[Engineering Decision] --> Runtime[Runtime Behavior]
-    Runtime --> Ops[Operations]
-    Runtime --> Security[Security]
-    Runtime --> Cost[Cost]
-    Ops --> Feedback[Production Feedback]
-    Feedback --> Decision
+```
+GET /health (Executes: SELECT 1 FROM Orders)
 ```
 
-## Production Usage
+Both Kubernetes **Liveness** and **Readiness** probes were pointed to this single URL.
 
-Use this capability as part of the launch foundation. Define the production contract, add tests around externally visible behavior, record the operational assumptions, and make the behavior visible through telemetry. Production usage means the team knows how the feature behaves during deploys, scale-out, dependency failure, secret rotation, and partial regional outage.
+### The Cascading Catastrophe:
+1. When the database paused for 10 seconds, the `/health` queries timed out.
+2. Kubernetes concluded: *"All 60 application pods are dead! Restart them immediately!"*
+3. Kubernetes terminated all 60 healthy pods simultaneously.
+4. When new pods started up, they all tried to establish initial database connection pools at the exact same instant, crushing the database CPU to 100%.
+5. The database could not respond to new startup queries in time, causing the new pods to fail their liveness probes and get killed again.
 
-Operational checklist:
+The entire cluster entered an infinite **CrashLoopBackOff Death Spiral**.
 
-- Define the owner and review cadence.
-- Document environment-specific behavior.
-- Add observable signals: log events, metrics, traces, health checks, or dashboards.
-- Add failure-mode tests where the blast radius is high.
-- Record rollout and rollback instructions.
-- Estimate cost impact before high-volume launch.
+What should have been a 10-second transient database blip turned into a 4-hour complete production outage.
 
-## Common Mistakes
+The root cause was pointing Liveness probes to external dependencies.
 
-| Mistake | Why it hurts in production | Better approach |
-|---|---|---|
-| Treating framework defaults as architecture | Defaults optimize for broad usability, not your launch risk | Make explicit decisions and document them |
-| Mixing domain logic with transport code | Makes tests brittle and contract evolution risky | Keep use cases independent of HTTP details |
-| Ignoring cancellation and timeouts | Slow dependencies can consume threads and sockets | Propagate CancellationToken and bound every call |
-| Logging unbounded payloads | Increases cost and may leak sensitive data | Log identifiers, states, and safe dimensions |
-| Adding abstractions for style only | Creates indirection without resilience | Add abstractions where they protect policy or enable tests |
+---
 
-## Trade-offs
+# The Three Types of Container Probes
 
-| Decision pressure | Optimize for | Cost |
-|---|---|---|
-| Fast launch | Simpler architecture and fewer moving parts | Less isolation if requirements grow quickly |
-| Enterprise contract stability | Versioning, compatibility tests, documentation | More governance and slower breaking changes |
-| Deep observability | Faster incident response | Storage cost and data classification work |
-| Strong validation | Safer inputs and clearer client errors | More rules to maintain and test |
-| Cloud-native behavior | Better scaling and operations | Requires platform knowledge and automated verification |
+A Principal Engineer establishes three distinct probe contracts:
 
-```mermaid
-flowchart TD
-    A[Choose approach] --> B{Is it a stable public contract?}
-    B -->|Yes| C[Optimize for compatibility and explicit governance]
-    B -->|No| D[Optimize for simplicity and fast feedback]
-    C --> E[Record decision]
-    D --> E
-    E --> F[Verify with tests and telemetry]
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. Startup Probe (/health/startup)                                          │
+│    • Purpose: Has the application completed initialization?                 │
+│    • Checks: DI graph build, EF Core migrations, warm-up caches              │
+│    • Failure Action: Kubernetes waits (or restarts if failureThreshold hit) │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 2. Liveness Probe (/health/live)                                            │
+│    • Purpose: Is the process deadlocked or completely hung?                 │
+│    • Checks: Process responsiveness, thread-pool sanity (IN-MEMORY ONLY)     │
+│    • NEVER checks: Databases, Redis, external APIs!                         │
+│    • Failure Action: Kubernetes KILLS the container and restarts it         │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 3. Readiness Probe (/health/ready)                                          │
+│    • Purpose: Can this pod accept incoming user traffic right now?         │
+│    • Checks: Database connectivity, Redis cache, essential dependencies    │
+│    • Failure Action: Removes pod from load balancer pool (DOES NOT KILL IT) │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## Best Practices
+---
 
-- Make external contracts explicit: OpenAPI, status codes, ProblemDetails, versioning, pagination, and error semantics.
-- Prefer simple architectural boundaries with strong tests over elaborate layering with weak ownership.
-- Design for failure first: dependency timeout, invalid configuration, expired secret, partial outage, and noisy client.
-- Use structured logs and stable dimensions; avoid high-cardinality values unless necessary.
-- Validate configuration on startup for critical settings.
-- Keep middleware order intentional and reviewed.
-- Define health checks for orchestrators, not for human curiosity alone.
-- Use architecture decision records for choices that affect multiple teams or production operations.
+# Implementing Probes in ASP.NET Core
 
-## Examples
+In ASP.NET Core, use **Tags** to separate Liveness from Readiness:
 
-### Architecture Decision Record Excerpt
-
-| Field | Example |
-|---|---|
-| Decision | Use typed HttpClient for cohesive downstream APIs |
-| Status | Accepted |
-| Context | The API calls a billing service on the critical request path |
-| Consequence | Better testability and encapsulated resilience policy; more classes to own |
-| Review trigger | New downstream endpoint, latency SLO change, or incident involving billing |
-
-### Production Review Evidence
-
-- Unit tests for domain and application rules.
-- Integration tests for HTTP contract and middleware behavior.
-- Load test showing latency, CPU, memory, and dependency behavior at target concurrency.
-- Dashboard covering request rate, error rate, duration, saturation, dependency calls, and log volume.
-- Runbook explaining rollback, configuration ownership, and incident triage.
-
-
-## Code Snippets
+### Step 1: Register Health Checks in `Program.cs`
 
 ```csharp
 builder.Services.AddHealthChecks()
-    .AddSqlServer(connectionString, name: "sql", timeout: TimeSpan.FromSeconds(2))
-    .AddUrlGroup(new Uri("https://dependencies.example.com/health"), name: "dependency");
+    // 1. Liveness check: Fast, in-memory, 0 external calls
+    .AddCheck("self", () => HealthCheckResult.Healthy("Process is running"), tags: ["live"])
 
-app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = _ => false });
-app.MapHealthChecks("/health/ready");
+    // 2. Readiness checks: External dependencies with strict timeouts
+    .AddSqlServer(
+        connectionString: builder.Configuration.GetConnectionString("SqlDatabase")!,
+        healthQuery: "SELECT 1;",
+        name: "sql-database",
+        failureStatus: HealthStatus.Unhealthy,
+        tags: ["ready"],
+        timeout: TimeSpan.FromSeconds(2))
+
+    .AddRedis(
+        redisConnectionString: builder.Configuration.GetConnectionString("Redis")!,
+        name: "redis-cache",
+        failureStatus: HealthStatus.Degraded, // Cache down = Degraded, not Unhealthy!
+        tags: ["ready"],
+        timeout: TimeSpan.FromSeconds(1));
 ```
 
-## Architecture Notes
+---
 
-The architecture should keep decisions visible. A principal engineer should be able to point to the code and answer: where does policy live, where do side effects happen, where does the public contract get shaped, and where will the team look during an incident?
+### Step 2: Map Endpoints with Tag Predicates
 
-Recommended baseline:
+```csharp
+var app = builder.Build();
 
-```text
-src/
-  Api/              HTTP, middleware, authentication, OpenAPI, controllers/endpoints
-  Application/      Use cases, ports, validation orchestration, DTOs
-  Domain/           Entities, value objects, invariants, domain services
-  Infrastructure/   EF Core, external HTTP clients, cloud adapters, logging adapters
-  Contracts/        Public request/response contracts if shared deliberately
-tests/
-  UnitTests/
-  IntegrationTests/
-  ArchitectureTests/
+// Liveness Endpoint (Consumed by K8s Liveness Probe):
+app.MapHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("live"),
+    ResponseWriter = WriteSimpleResponse
+});
+
+// Readiness Endpoint (Consumed by K8s Readiness Probe):
+app.MapHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready"),
+    ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+});
 ```
 
-Architecture notes for this module:
+---
 
-- Runtime behavior must be knowable from code and docs.
-- Security boundaries must be enforced close to the request boundary and repeated in domain rules where invariants require it.
-- Maintainability comes from fewer hidden dependencies and clear ownership.
-- Scalability comes from bounded work, async I/O, stateless request handling, and thoughtful dependency limits.
-- Cost control is an architecture concern when telemetry, retries, and cloud resources scale with traffic.
+# Health Check Statuses: Healthy, Degraded, Unhealthy
 
-## Principal Thinking
+A Principal Engineer distinguishes between **Degraded** and **Unhealthy**:
 
-A principal engineer asks different questions from an implementation owner:
+| Status | HTTP Status | Meaning | Action by Orchestrator |
+|---|---|---|---|
+| **Healthy** | 200 OK | All core and non-core systems operational. | Pod receives full traffic. |
+| **Degraded** | 200 OK | Core database is up, but optional cache or analytics is down. App operates in fallback mode. | Pod continues receiving traffic. |
+| **Unhealthy** | 503 Service Unavailable | Core database is unreachable; use cases cannot succeed. | Pod is temporarily removed from the load balancer. |
 
-- Why this approach, and what evidence would change our mind?
-- Why not the simpler built-in default?
-- Why not a more sophisticated platform pattern?
-- When should we avoid this design?
-- What failure mode does this design make easier to detect?
-- What failure mode does it hide?
-- How would Microsoft implement this for a broad Azure customer base?
-- How would Amazon implement this for high-scale, operationally strict service ownership?
+### Example: Redis Cache Failure as `Degraded`
+If Redis goes down, Nova Commerce can still process orders by falling back to direct SQL queries. Marking the pod `Unhealthy` would take the entire store offline unnecessarily!
 
-Microsoft-style implementation usually emphasizes documented contracts, platform integration, secure defaults, compatibility, and tooling support. Amazon-style implementation usually emphasizes service ownership, operational metrics, blast-radius reduction, explicit runbooks, and continuous correction through incidents. A strong principal engineer can combine both instincts without cargo-culting either company.
+---
 
-## Review Questions
+# Common Mistakes
 
-1. What production failure is most likely if this area is implemented casually?
-2. Which behavior is part of the public contract, and how is it tested?
-3. Which runtime cost grows with request volume?
-4. Which cloud platform feature changes the design assumption?
-5. How would you explain the trade-off to a CTO, an SRE, and a feature team?
-6. What would cause you to revisit this decision in six months?
+❌ **Checking External Databases in `/health/live` (Liveness Probes)**
+```csharp
+// DISASTER: A database outage causes orchestrators to reboot all application pods continuously.
+```
+✅ **Liveness probes MUST be 100% in-memory self-checks.**
 
-## References
+❌ **Running Heavy SQL Queries in Health Checks**
+```csharp
+healthQuery: "SELECT COUNT(*) FROM Orders" // ANTI-PATTERN: Scans whole table every 5 seconds!
+```
+✅ **Use lightweight queries: `SELECT 1;`.**
 
-- [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/)
-- [ASP.NET Core fundamentals](https://learn.microsoft.com/aspnet/core/fundamentals/)
-- [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
-- [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/)
-- [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/)
-- Robert C. Martin, Clean Architecture
-- Mark Seemann, Dependency Injection Principles, Practices, and Patterns
-- Jeffrey Richter, CLR via C#
-- Andrew Lock, ASP.NET Core in Action
-- Martin Kleppmann, Designing Data-Intensive Applications
-- Martin Fowler architecture essays
-- Nick Chapsas, advanced .NET and ASP.NET Core content
+❌ **Missing Strict Timeouts on Health Checks**
+```csharp
+// If a dependency hangs for 60s, the health check blocks, causing K8s probe timeouts.
+```
+✅ **Set aggressive timeouts (1 to 2 seconds maximum) on all external dependency checks.**
 
-## Summary
+---
 
-Health Checks is part of the launch foundation for an enterprise-grade public API. The principal-level expectation is not memorizing framework APIs; it is understanding runtime behavior, making trade-offs explicit, proving the design with tests and telemetry, and leaving behind a system that other engineers can operate confidently.
+# Architect's Decision
+
+### Scenario
+Nova Commerce runs 80 container pods on Azure Container Apps with high traffic.
+
+### Standard Configuration:
+1. **Startup Probe**: `/health/ready` (Initial delay: 5s, period: 5s, failure threshold: 10).
+2. **Liveness Probe**: `/health/live` (In-memory `self` check, period: 10s, timeout: 1s, restart pod on failure).
+3. **Readiness Probe**: `/health/ready` (SQL Server, Redis, period: 5s, timeout: 2s, remove from load balancer on 503).
+4. **Caching**: Use a 3-second in-memory cache on Readiness check results to prevent 80 pods from hammering SQL Server simultaneously.
+
+---
+
+# Principal Thinking
+
+| Level | Perspective | Focus |
+|---|---|---|
+| **Junior** | Endpoint | "I added `app.MapHealthChecks("/health")` so I can see if it's up." |
+| **Senior** | Integration | "I configured SQL and Redis health checks with JSON responses." |
+| **Principal** | Orchestration & Failure Cascades | "How do our probes prevent death spirals? Why are Liveness and Readiness decoupled? How do we handle degraded modes without shedding unnecessary traffic?" |
+
+---
+
+# Learning Resources & References
+
+### Authoritative Documentation
+- [Health checks in ASP.NET Core — Microsoft Learn](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/health-checks)
+- [Kubernetes Best Practices: Liveness and Readiness Probes](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/)
+- [AspNetCore.Diagnostics.HealthChecks Community Repository](https://github.com/Xabaril/AspNetCore.Diagnostics.HealthChecks)
+
+---
+
+# Self Assessment
+
+1. Why must a Kubernetes Liveness probe NEVER check external dependencies like databases or caches?
+2. What is the fundamental difference in orchestrator behavior when a Liveness probe fails vs when a Readiness probe fails?
+3. What is the purpose of a Startup probe during application boot and database migration execution?
+4. When should a dependency failure return `HealthStatus.Degraded` (HTTP 200) instead of `HealthStatus.Unhealthy` (HTTP 503)?
+5. How does caching health check results prevent thousands of container instances from overloading backend infrastructure?

@@ -1,0 +1,2763 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Principal Engineer Academy — Quest Mode</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="content-db.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-body: #090d16;
+            --bg-card: #121824;
+            --bg-card-hover: #182232;
+            --bg-elevated: #1e293b;
+            --border: #233044;
+            --border-focus: #3b82f6;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-emerald: #10b981;
+            --accent-violet: #8b5cf6;
+            --accent-amber: #f59e0b;
+            --accent-rose: #f43f5e;
+            --gradient-brand: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #06b6d4 100%);
+            --gradient-gold: linear-gradient(135deg, #f59e0b 0%, #ea580c 100%);
+            --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.4);
+            --radius-sm: 8px;
+            --radius-md: 12px;
+            --radius-lg: 18px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+            padding: 24px;
+        }
+
+        .container {
+            max-width: 1440px;
+            margin: 0 auto;
+        }
+
+        /* Top App Navigation & Header */
+        header {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 28px 36px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-card);
+            position: relative;
+            overflow: hidden;
+        }
+
+        header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-brand);
+        }
+
+        .header-main {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+
+        .title-group h1 {
+            font-size: 2.1rem;
+            font-weight: 800;
+            background: var(--gradient-brand);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .title-group p {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            margin-top: 4px;
+        }
+
+        .header-controls {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .badge-streak {
+            background: var(--gradient-gold);
+            color: #fff;
+            padding: 8px 16px;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 0.88rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+        }
+
+        button.btn {
+            background: var(--bg-elevated);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            font-weight: 600;
+            font-size: 0.88rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        button.btn:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-blue);
+            transform: translateY(-1px);
+        }
+
+        button.btn-primary {
+            background: var(--accent-blue);
+            border-color: transparent;
+            color: #fff;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.35);
+        }
+
+        button.btn-primary:hover {
+            background: #2563eb;
+        }
+
+        button.btn-success {
+            background: var(--accent-emerald);
+            border-color: transparent;
+            color: #fff;
+        }
+
+        button.btn-success:hover {
+            background: #059669;
+        }
+
+        /* Live Smart Alert: Next Item to Study */
+        .smart-next-banner {
+            margin-top: 20px;
+            background: rgba(59, 130, 246, 0.08);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+            border-left: 5px solid var(--accent-blue);
+            border-radius: var(--radius-sm);
+            padding: 14px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .next-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .next-tag {
+            background: var(--accent-blue);
+            color: #fff;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            padding: 3px 8px;
+            border-radius: 4px;
+            letter-spacing: 0.05em;
+        }
+
+        .next-title {
+            font-weight: 700;
+            color: #e2e8f0;
+            font-size: 1rem;
+        }
+
+        .next-meta {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-family: 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace;
+        }
+
+        /* Metric Highlights Grid */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+            gap: 18px;
+            margin-bottom: 24px;
+        }
+
+        .metric-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--text-secondary);
+            font-weight: 700;
+        }
+
+        .metric-value {
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+
+        .progress-track {
+            height: 6px;
+            background: #1e293b;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: var(--gradient-brand);
+            transition: width 0.4s ease;
+        }
+
+        /* App Main Layout: Sprints Tree + Interactive Study Tools */
+        .workspace-layout {
+            display: grid;
+            grid-template-columns: 1fr 380px;
+            gap: 24px;
+        }
+
+        @media (max-width: 1140px) {
+            .workspace-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Search and Filter Controls */
+        .filter-toolbar {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 14px;
+        }
+
+        .search-box {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 8px 14px;
+            flex: 1;
+            min-width: 240px;
+        }
+
+        .search-box input {
+            background: transparent;
+            border: none;
+            outline: none;
+            color: var(--text-primary);
+            width: 100%;
+            font-size: 0.9rem;
+            font-family: inherit;
+        }
+
+        .filter-tabs {
+            display: flex;
+            gap: 6px;
+        }
+
+        .filter-btn {
+            background: var(--bg-elevated);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+            padding: 6px 12px;
+            border-radius: var(--radius-sm);
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .filter-btn.active {
+            background: var(--accent-blue);
+            color: #fff;
+            border-color: var(--accent-blue);
+        }
+
+        /* Sprint Accordion & Study Items */
+        .sprints-list {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .sprint-block {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            transition: all 0.2s ease;
+        }
+
+        .sprint-block.active-sprint {
+            border-color: var(--accent-blue);
+            box-shadow: 0 4px 20px rgba(59, 130, 246, 0.12);
+        }
+
+        .sprint-block.sprint-finished {
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+
+        .sprint-header-row {
+            padding: 16px 22px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            background: var(--bg-card);
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .sprint-header-row:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .sprint-title-area {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .sprint-code-pill {
+            font-family: 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace;
+            font-weight: 700;
+            font-size: 0.8rem;
+            padding: 4px 10px;
+            border-radius: 6px;
+            background: #1e293b;
+            color: var(--accent-cyan);
+            border: 1px solid #334155;
+        }
+
+        .sprint-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .sprint-progress-stat {
+            font-size: 0.82rem;
+            color: var(--text-secondary);
+            font-family: 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace;
+        }
+
+        .sprint-status-tag {
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .btn-sprint-action {
+            background: #1e293b;
+            border: 1px solid #334155;
+            color: var(--text-secondary);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 0.72rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-sprint-action:hover {
+            color: #fff;
+            border-color: var(--accent-blue);
+            background: var(--bg-card-hover);
+        }
+
+        .btn-sprint-check:hover {
+            border-color: var(--accent-emerald);
+            color: var(--accent-emerald);
+        }
+
+        .btn-sprint-uncheck:hover {
+            border-color: var(--accent-rose);
+            color: var(--accent-rose);
+        }
+
+        .tag-completed {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-emerald);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .tag-in-progress {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .tag-pending {
+            background: rgba(100, 116, 139, 0.12);
+            color: var(--text-muted);
+            border: 1px solid #334155;
+        }
+
+        .sprint-body-content {
+            padding: 0 20px 20px 20px;
+            border-top: 1px solid var(--border);
+            background: rgba(15, 23, 42, 0.4);
+        }
+
+        .sprint-description-text {
+            font-size: 0.9rem;
+            color: #cbd5e1;
+            margin: 14px 0 16px 0;
+            padding: 8px 12px;
+            background: rgba(30, 41, 59, 0.4);
+            border-left: 3px solid var(--accent-cyan);
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* Granular Study Item Row */
+        .items-table {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .study-item-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            transition: all 0.2s ease;
+        }
+
+        .study-item-card:hover {
+            border-color: #3b82f6;
+            background: var(--bg-card-hover);
+        }
+
+        .study-item-card.is-done {
+            opacity: 0.85;
+            border-left: 4px solid var(--accent-emerald);
+        }
+
+        .study-item-card.is-in-progress {
+            border-left: 4px solid var(--accent-blue);
+        }
+
+        .study-item-main-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .item-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .status-checkbox {
+            width: 20px;
+            height: 20px;
+            accent-color: var(--accent-emerald);
+            cursor: pointer;
+        }
+
+        .item-title-text {
+            font-weight: 600;
+            font-size: 0.95rem;
+            color: #f1f5f9;
+        }
+
+        .study-item-card.is-done .item-title-text {
+            text-decoration: line-through;
+            color: var(--text-muted);
+        }
+
+        .item-right-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-selector {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .status-selector:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .btn-note-toggle {
+            background: transparent;
+            border: 1px solid #334155;
+            color: var(--text-secondary);
+            font-size: 0.78rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-note-toggle:hover {
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+        }
+
+        .btn-quest-start {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.25), rgba(59, 130, 246, 0.25));
+            border: 1px solid rgba(139, 92, 246, 0.5);
+            color: #c4b5fd;
+            font-size: 0.78rem;
+            font-weight: 800;
+            padding: 5px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+
+        .btn-quest-start:hover {
+            background: var(--accent-violet);
+            color: #fff;
+            box-shadow: 0 0 16px rgba(139, 92, 246, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .btn-quest-start.quest-done {
+            background: rgba(16, 185, 129, 0.15);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: var(--accent-emerald);
+        }
+
+        .sprint-block.sprint-locked {
+            opacity: 0.55;
+            filter: grayscale(0.4);
+        }
+
+        .sprint-block.sprint-locked .sprint-header-row {
+            pointer-events: auto;
+            cursor: not-allowed;
+        }
+
+        .lock-badge {
+            background: rgba(244, 63, 94, 0.15);
+            color: var(--accent-rose);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 20px;
+        }
+
+        .phase-progress-row {
+            display: flex;
+            gap: 8px;
+            margin: 12px 0 16px 0;
+            flex-wrap: wrap;
+        }
+
+        .phase-pill {
+            flex: 1;
+            min-width: 120px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 8px 10px;
+            text-align: center;
+            transition: all 0.3s;
+        }
+
+        .phase-pill.phase-complete {
+            border-color: var(--accent-emerald);
+            background: rgba(16, 185, 129, 0.1);
+        }
+
+        .phase-pill.phase-active {
+            border-color: var(--accent-violet);
+            background: rgba(139, 92, 246, 0.12);
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.2);
+        }
+
+        .phase-pill-icon { font-size: 1.2rem; }
+        .phase-pill-name { font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); margin-top: 2px; }
+        .phase-pill-stat { font-size: 0.68rem; color: var(--text-muted); font-family: 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace; }
+
+        .item-path-badge {
+            font-family: 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace;
+            font-size: 0.72rem;
+            color: var(--text-muted);
+            background: #0f172a;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+
+        /* ===== GAME HUD & QUEST SYSTEM ===== */
+        .game-hud {
+            background: linear-gradient(135deg, #1a1033 0%, #121824 50%, #0c1929 100%);
+            border: 1px solid rgba(139, 92, 246, 0.35);
+            border-radius: var(--radius-md);
+            padding: 18px 24px;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: 1fr auto auto;
+            gap: 20px;
+            align-items: center;
+            box-shadow: 0 4px 24px rgba(139, 92, 246, 0.12);
+        }
+
+        @media (max-width: 900px) {
+            .game-hud { grid-template-columns: 1fr; }
+        }
+
+        .player-identity {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .player-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
+            background: var(--gradient-brand);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            box-shadow: 0 4px 16px rgba(59, 130, 246, 0.4);
+        }
+
+        .player-rank { font-size: 0.75rem; color: var(--accent-violet); font-weight: 800; text-transform: uppercase; letter-spacing: 0.06em; }
+        .player-title { font-size: 1.15rem; font-weight: 800; color: #f8fafc; }
+        .player-level { font-size: 0.82rem; color: var(--text-secondary); font-family: 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace; }
+
+        .xp-bar-container { flex: 1; min-width: 200px; }
+        .xp-bar-label { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--text-secondary); margin-bottom: 4px; font-weight: 600; }
+        .xp-bar-track { height: 10px; background: #1e293b; border-radius: 5px; overflow: hidden; }
+        .xp-bar-fill { height: 100%; background: linear-gradient(90deg, #8b5cf6, #3b82f6, #06b6d4); transition: width 0.6s ease; border-radius: 5px; }
+
+        .hud-stats { display: flex; gap: 16px; flex-wrap: wrap; }
+        .hud-stat { text-align: center; padding: 8px 14px; background: rgba(30, 41, 59, 0.6); border-radius: 10px; border: 1px solid #334155; min-width: 80px; }
+        .hud-stat-value { font-size: 1.3rem; font-weight: 800; color: #f8fafc; }
+        .hud-stat-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+
+        .daily-mission-card {
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.08), rgba(234, 88, 12, 0.05));
+            border: 1px solid rgba(245, 158, 11, 0.35);
+            border-left: 5px solid var(--accent-amber);
+            border-radius: var(--radius-sm);
+            padding: 14px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .mission-tag { background: var(--accent-amber); color: #1a1a1a; font-size: 0.72rem; font-weight: 800; padding: 3px 8px; border-radius: 4px; text-transform: uppercase; }
+        .mission-title { font-weight: 700; color: #fef3c7; font-size: 0.95rem; }
+        .mission-reward { font-size: 0.8rem; color: var(--accent-amber); font-weight: 700; }
+
+        .view-toggle-bar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .view-toggle-btn {
+            background: var(--bg-elevated);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            padding: 8px 16px;
+            border-radius: var(--radius-sm);
+            font-weight: 700;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .view-toggle-btn.active {
+            background: var(--accent-violet);
+            border-color: var(--accent-violet);
+            color: #fff;
+        }
+
+        /* Campaign Map */
+        .campaign-map {
+            display: none;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .campaign-map.visible { display: grid; }
+
+        .campaign-node {
+            background: var(--bg-card);
+            border: 2px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 20px;
+            position: relative;
+            transition: all 0.3s;
+            cursor: pointer;
+        }
+
+        .campaign-node:hover:not(.node-locked) {
+            border-color: var(--accent-violet);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(139, 92, 246, 0.2);
+        }
+
+        .campaign-node.node-complete { border-color: var(--accent-emerald); background: rgba(16, 185, 129, 0.05); }
+        .campaign-node.node-active { border-color: var(--accent-blue); box-shadow: 0 0 20px rgba(59, 130, 246, 0.25); }
+        .campaign-node.node-locked { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.5); }
+
+        .node-number { font-family: 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace; font-size: 0.75rem; color: var(--accent-cyan); font-weight: 700; }
+        .node-title { font-size: 1rem; font-weight: 800; margin: 6px 0; }
+        .node-progress-bar { height: 4px; background: #1e293b; border-radius: 2px; margin-top: 10px; overflow: hidden; }
+        .node-progress-fill { height: 100%; background: var(--gradient-brand); transition: width 0.4s; }
+        .node-phases { display: flex; gap: 4px; margin-top: 8px; }
+        .node-phase-dot { width: 8px; height: 8px; border-radius: 50%; background: #334155; }
+        .node-phase-dot.done { background: var(--accent-emerald); }
+        .node-phase-dot.current { background: var(--accent-violet); box-shadow: 0 0 6px var(--accent-violet); }
+
+        /* Quest Modal (Full Content Reader) */
+        .quest-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(9, 13, 22, 0.92);
+            backdrop-filter: blur(8px);
+            z-index: 10000;
+            display: none;
+            align-items: stretch;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .quest-overlay.show { display: flex; }
+
+        .quest-panel {
+            background: var(--bg-card);
+            border: 1px solid rgba(139, 92, 246, 0.4);
+            border-radius: var(--radius-lg);
+            width: 100%;
+            max-width: 1400px;
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            overflow: hidden;
+            max-height: calc(100vh - 32px);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+        }
+
+        @media (max-width: 1024px) {
+            .quest-panel { grid-template-columns: 1fr; max-height: 100vh; border-radius: 0; }
+        }
+
+        .quest-content-area {
+            overflow-y: auto;
+            padding: 28px 36px;
+            border-right: 1px solid var(--border);
+        }
+
+        .quest-sidebar {
+            background: rgba(15, 23, 42, 0.6);
+            padding: 24px 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .quest-header-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 20px;
+            gap: 12px;
+        }
+
+        .quest-badge {
+            display: inline-block;
+            background: rgba(139, 92, 246, 0.2);
+            color: var(--accent-violet);
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            font-size: 0.72rem;
+            font-weight: 800;
+            padding: 3px 10px;
+            border-radius: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .quest-title { font-size: 1.5rem; font-weight: 800; color: #f8fafc; margin-top: 8px; }
+
+        .quest-markdown {
+            line-height: 1.75;
+            color: #cbd5e1;
+            font-size: 0.95rem;
+        }
+
+        .quest-markdown h1 { font-size: 1.6rem; color: #f8fafc; margin: 1.5em 0 0.6em; border-bottom: 1px solid #334155; padding-bottom: 0.3em; }
+        .quest-markdown h2 { font-size: 1.3rem; color: #e2e8f0; margin: 1.3em 0 0.5em; }
+        .quest-markdown h3 { font-size: 1.1rem; color: #cbd5e1; margin: 1.1em 0 0.4em; }
+        .quest-markdown p { margin: 0.8em 0; }
+        .quest-markdown code { font-family: 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace; background: #0f172a; padding: 2px 6px; border-radius: 4px; font-size: 0.88em; color: var(--accent-cyan); }
+        .quest-markdown pre { background: #0a0f1a; border: 1px solid #233044; border-radius: 8px; padding: 16px; overflow-x: auto; margin: 1em 0; }
+        .quest-markdown pre code { background: none; padding: 0; color: #e2e8f0; }
+        .quest-markdown blockquote { border-left: 4px solid var(--accent-violet); padding: 8px 16px; margin: 1em 0; background: rgba(139, 92, 246, 0.08); color: #c4b5fd; border-radius: 0 6px 6px 0; }
+        .quest-markdown ul, .quest-markdown ol { margin: 0.8em 0; padding-left: 1.5em; }
+        .quest-markdown li { margin: 0.3em 0; }
+        .quest-markdown table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+        .quest-markdown th, .quest-markdown td { border: 1px solid #334155; padding: 8px 12px; text-align: left; }
+        .quest-markdown th { background: #1e293b; color: #f8fafc; }
+        .quest-markdown a { color: var(--accent-cyan); }
+        .quest-markdown hr { border: none; border-top: 1px solid #334155; margin: 1.5em 0; }
+
+        .quest-loading { text-align: center; padding: 60px 20px; color: var(--text-muted); }
+        .quest-loading .spinner { font-size: 2rem; animation: spin 1s linear infinite; display: block; margin-bottom: 12px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .quest-error-box {
+            background: rgba(244, 63, 94, 0.1);
+            border: 1px solid rgba(244, 63, 94, 0.3);
+            border-radius: 8px;
+            padding: 20px;
+            color: #fda4af;
+        }
+
+        .quest-phase-checklist { display: flex; flex-direction: column; gap: 10px; }
+        .quest-phase-item {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .quest-phase-item:hover { border-color: var(--accent-violet); }
+        .quest-phase-item.checked { border-color: var(--accent-emerald); background: rgba(16, 185, 129, 0.08); }
+        .quest-phase-item input { width: 18px; height: 18px; accent-color: var(--accent-emerald); margin-top: 2px; cursor: pointer; }
+        .quest-phase-label { font-weight: 700; font-size: 0.88rem; color: #f1f5f9; }
+        .quest-phase-desc { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+
+        .quest-xp-reward {
+            text-align: center;
+            padding: 14px;
+            background: linear-gradient(135deg, rgba(245, 158, 11, 0.12), rgba(234, 88, 12, 0.08));
+            border: 1px solid rgba(245, 158, 11, 0.3);
+            border-radius: 10px;
+        }
+
+        .quest-xp-reward .xp-amount { font-size: 1.5rem; font-weight: 800; color: var(--accent-amber); }
+        .quest-xp-reward .xp-label { font-size: 0.75rem; color: var(--text-muted); }
+
+        .btn-complete-quest {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+            border: none;
+            border-radius: 10px;
+            color: #fff;
+            font-weight: 800;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .btn-complete-quest:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4); }
+        .btn-complete-quest:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* Celebration Modal */
+        .celebration-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(9, 13, 22, 0.85);
+            z-index: 11000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .celebration-overlay.show { display: flex; animation: fadeIn 0.3s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .celebration-box {
+            background: linear-gradient(145deg, #1e1b4b, #121824);
+            border: 2px solid var(--accent-violet);
+            border-radius: var(--radius-lg);
+            padding: 40px 48px;
+            text-align: center;
+            max-width: 480px;
+            animation: popIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes popIn {
+            from { transform: scale(0.7); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .celebration-icon { font-size: 4rem; margin-bottom: 12px; animation: bounce 0.6s ease infinite alternate; }
+        @keyframes bounce { from { transform: translateY(0); } to { transform: translateY(-8px); } }
+
+        .celebration-title { font-size: 1.6rem; font-weight: 800; color: #f8fafc; margin-bottom: 8px; }
+        .celebration-subtitle { color: var(--text-secondary); margin-bottom: 20px; font-size: 0.95rem; }
+        .celebration-xp { font-size: 2rem; font-weight: 800; color: var(--accent-amber); margin-bottom: 20px; }
+
+        .confetti-piece {
+            position: absolute;
+            width: 8px;
+            height: 8px;
+            border-radius: 2px;
+            animation: confettiFall 2s ease-out forwards;
+        }
+
+        @keyframes confettiFall {
+            0% { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(400px) rotate(720deg); opacity: 0; }
+        }
+
+        /* Achievements Panel */
+        .achievements-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .achievement-card {
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 14px;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .achievement-card.unlocked {
+            border-color: var(--accent-amber);
+            background: rgba(245, 158, 11, 0.06);
+        }
+
+        .achievement-card.locked { opacity: 0.45; filter: grayscale(0.8); }
+        .achievement-icon { font-size: 2rem; margin-bottom: 6px; }
+        .achievement-name { font-weight: 700; font-size: 0.85rem; color: #f1f5f9; }
+        .achievement-desc { font-size: 0.72rem; color: var(--text-muted); margin-top: 4px; }
+
+        /* Note Drawer per Item */
+        .item-note-drawer {
+            display: none;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px dashed #233044;
+        }
+
+        .item-note-drawer.open {
+            display: block;
+        }
+
+        .item-note-drawer textarea {
+            width: 100%;
+            height: 70px;
+            background: #090d16;
+            border: 1px solid #2a384f;
+            border-radius: 6px;
+            padding: 8px 12px;
+            color: #e2e8f0;
+            font-family: inherit;
+            font-size: 0.85rem;
+            resize: vertical;
+        }
+
+        .item-note-drawer textarea:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        /* Right Sidebar Tools: Timer, Study Session Log, Daily Routine */
+        .tools-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .sidebar-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 20px;
+        }
+
+        .card-header-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Interactive Study Stopwatch / Pomodoro */
+        .timer-display {
+            font-family: 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace;
+            font-size: 2.3rem;
+            font-weight: 800;
+            text-align: center;
+            background: #090d16;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            margin-bottom: 12px;
+            color: var(--accent-cyan);
+            letter-spacing: 0.05em;
+        }
+
+        .timer-controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        /* Session Logger Form */
+        .session-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .session-form input,
+        .session-form select,
+        .session-form textarea {
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 8px 12px;
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.85rem;
+        }
+
+        .session-form input:focus,
+        .session-form select:focus,
+        .session-form textarea:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .session-history {
+            margin-top: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            max-height: 220px;
+            overflow-y: auto;
+        }
+
+        .history-entry {
+            background: #090d16;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border-left: 3px solid var(--accent-blue);
+            font-size: 0.82rem;
+        }
+
+        .history-date {
+            color: var(--text-muted);
+            font-size: 0.72rem;
+            font-family: 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.show {
+            display: flex;
+        }
+
+        .modal-box {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 24px;
+            max-width: 520px;
+            width: 90%;
+        }
+
+        .modal-box h3 {
+            font-size: 1.2rem;
+            margin-bottom: 12px;
+        }
+
+        .modal-box textarea {
+            width: 100%;
+            height: 160px;
+            background: var(--bg-body);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            padding: 12px;
+            color: var(--text-primary);
+            font-family: 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace;
+            font-size: 0.82rem;
+            margin-bottom: 14px;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .sprint-block.collapsed .sprint-body-content {
+            display: none;
+        }
+
+        .sprint-block.collapsed .chevron-icon {
+            transform: rotate(-90deg);
+        }
+
+        .chevron-icon {
+            transition: transform 0.2s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Main Top App Bar -->
+        <header>
+            <div class="header-main">
+                <div class="title-group">
+                    <h1><span>🎮</span> Principal Engineer Quest</h1>
+                    <p>12-Sprint Campaign &middot; Complete phases, earn XP, unlock achievements, master every chapter</p>
+                </div>
+                <div class="header-controls">
+                    <div class="badge-streak" id="streakCounterBadge">
+                        🔥 <span id="streakText">0 Day Streak</span>
+                    </div>
+                    <button class="btn" onclick="openAchievementsModal()" title="View unlocked achievements">
+                        🏆 Achievements
+                    </button>
+                    <button class="btn" onclick="uncheckAllTopics()" title="Reset all checkboxes across all sprints to pending">
+                        ✕ Uncheck All Topics
+                    </button>
+                    <button class="btn" onclick="checkAllTopics()" title="Mark all items across all sprints as completed">
+                        ✓ Check All Topics
+                    </button>
+                    <button class="btn" onclick="openBackupModal()">
+                        💾 Backup / Restore
+                    </button>
+                    <button class="btn btn-primary" onclick="markAllSprintDonePrompt()">
+                        ⚡ Sprint Quick Actions
+                    </button>
+                </div>
+            </div>
+
+            <!-- Smart Next Topic Card -->
+            <div class="smart-next-banner" id="smartNextBanner">
+                <div class="next-info">
+                    <span class="next-tag">ACTIVE QUEST</span>
+                    <div>
+                        <div class="next-title" id="nextTargetTitle">Loading next quest...</div>
+                        <div class="next-meta" id="nextTargetMeta">Sprint details</div>
+                    </div>
+                </div>
+                <button class="btn btn-success" id="btnStartNextQuest" onclick="startNextQuest()">
+                    ⚔️ Start Quest
+                </button>
+                <button class="btn" id="btnMarkNextDone" onclick="completeCurrentNextTarget()" style="display:none;">
+                    ✓ Mark Complete
+                </button>
+            </div>
+        </header>
+
+        <!-- Game HUD: Level, XP, Stats -->
+        <div class="game-hud" id="gameHud">
+            <div class="player-identity">
+                <div class="player-avatar" id="playerAvatar">🌱</div>
+                <div>
+                    <div class="player-rank" id="playerRank">Rank 1</div>
+                    <div class="player-title" id="playerTitle">Apprentice Engineer</div>
+                    <div class="player-level" id="playerXpText">0 / 300 XP to next rank</div>
+                </div>
+            </div>
+            <div class="xp-bar-container">
+                <div class="xp-bar-label">
+                    <span>Experience</span>
+                    <span id="xpBarNumbers">0 XP</span>
+                </div>
+                <div class="xp-bar-track">
+                    <div class="xp-bar-fill" id="xpBarFill" style="width: 0%;"></div>
+                </div>
+            </div>
+            <div class="hud-stats">
+                <div class="hud-stat">
+                    <div class="hud-stat-value" id="hudQuestsDone">0</div>
+                    <div class="hud-stat-label">Quests</div>
+                </div>
+                <div class="hud-stat">
+                    <div class="hud-stat-value" id="hudAchievements">0</div>
+                    <div class="hud-stat-label">Badges</div>
+                </div>
+                <div class="hud-stat">
+                    <div class="hud-stat-value" id="hudTotalXp">0</div>
+                    <div class="hud-stat-label">Total XP</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Daily Mission -->
+        <div class="daily-mission-card" id="dailyMissionCard">
+            <div>
+                <span class="mission-tag">📋 Daily Mission</span>
+                <div class="mission-title" id="dailyMissionTitle">Complete today's study quest to earn bonus XP</div>
+            </div>
+            <div class="mission-reward" id="dailyMissionReward">+50 Bonus XP</div>
+        </div>
+
+        <!-- Metric Cards -->
+        <div class="metrics-grid">
+            <div class="metric-card">
+                <div class="metric-label">Overall Progress</div>
+                <div class="metric-value" id="valOverallPercentage">0%</div>
+                <div class="progress-track">
+                    <div class="progress-bar-fill" id="barOverallFill" style="width: 0%;"></div>
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Mastered Items</div>
+                <div class="metric-value" id="valItemsDone">0 / 0</div>
+                <div style="font-size: 0.78rem; color: var(--accent-emerald); font-weight: 600; margin-top: 4px;">
+                    Chapters & Labs Completed
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Completed Sprints</div>
+                <div class="metric-value" id="valSprintsDone">0 / 12</div>
+                <div style="font-size: 0.78rem; color: var(--accent-cyan); font-weight: 600; margin-top: 4px;">
+                    12-Sprint Roadmap
+                </div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Total XP Earned</div>
+                <div class="metric-value" id="valTotalXp">0</div>
+                <div style="font-size: 0.78rem; color: var(--accent-violet); font-weight: 600; margin-top: 4px;">
+                    Rank up by completing quests
+                </div>
+            </div>
+        </div>
+
+        <!-- View Toggle: Campaign Map vs Sprint List -->
+        <div class="view-toggle-bar">
+            <button class="view-toggle-btn active" id="btnViewSprints" onclick="setViewMode('sprints')">📚 Sprint List</button>
+            <button class="view-toggle-btn" id="btnViewMap" onclick="setViewMode('map')">🗺️ Campaign Map</button>
+        </div>
+
+        <!-- Campaign Map (12 Sprint Nodes) -->
+        <div class="campaign-map" id="campaignMap">
+            <!-- Dynamically generated -->
+        </div>
+
+        <!-- Filter & Search Toolbar -->
+        <div class="filter-toolbar">
+            <div class="search-box">
+                <span>🔍</span>
+                <input type="text" id="searchInput" placeholder="Search topics, keywords (e.g. JWT, BOLA, Polly, Logging, EF Core)..." oninput="handleSearch()">
+            </div>
+            <div class="filter-tabs">
+                <button class="filter-btn active" data-filter="all" onclick="setFilter('all', this)">All Items</button>
+                <button class="filter-btn" data-filter="pending" onclick="setFilter('pending', this)">Pending</button>
+                <button class="filter-btn" data-filter="in-progress" onclick="setFilter('in-progress', this)">In Progress</button>
+                <button class="filter-btn" data-filter="done" onclick="setFilter('done', this)">Completed</button>
+            </div>
+        </div>
+
+        <!-- Workspace Layout -->
+        <div class="workspace-layout">
+            <!-- Left: Sprints Tree & Study Checklist -->
+            <div class="sprints-list" id="sprintsContainer">
+                <!-- Dynamically generated sprints -->
+            </div>
+
+            <!-- Right: Interactive Study Stopwatch & Study Logger -->
+            <div class="tools-sidebar">
+                <!-- Study Focus Timer / Stopwatch -->
+                <div class="sidebar-card">
+                    <h3 class="card-header-title">
+                        <span>⏱️</span> Study Session Focus Timer
+                    </h3>
+                    <div class="timer-display" id="timerDisplay">00:00:00</div>
+                    <div class="timer-controls">
+                        <button class="btn btn-primary" id="btnTimerStart" onclick="startTimer()">Start</button>
+                        <button class="btn" id="btnTimerPause" onclick="pauseTimer()">Pause</button>
+                        <button class="btn" onclick="resetTimer()">Reset</button>
+                    </div>
+                    <button class="btn btn-success" style="width: 100%; margin-top: 6px;" onclick="logTimerSession()">
+                        💾 Save Time to Study Log
+                    </button>
+                </div>
+
+                <!-- Daily Study Logger -->
+                <div class="sidebar-card">
+                    <h3 class="card-header-title">
+                        <span>📝</span> Log Study Session
+                    </h3>
+                    <div class="session-form">
+                        <input type="text" id="logTopicInput" placeholder="Topic studied (e.g. 11-Logging.md)...">
+                        <div style="display: flex; gap: 8px;">
+                            <input type="number" id="logMinutesInput" placeholder="Minutes (e.g. 90)" style="width: 50%;">
+                            <select id="logConfidenceInput" style="width: 50%;">
+                                <option value="5">⭐⭐⭐⭐⭐ Strong</option>
+                                <option value="4">⭐⭐⭐⭐ Good</option>
+                                <option value="3">⭐⭐⭐ Need Review</option>
+                                <option value="2">⭐⭐ Difficult</option>
+                            </select>
+                        </div>
+                        <textarea id="logNotesInput" placeholder="Key architectural takeaway or trade-off learned..."></textarea>
+                        <button class="btn btn-primary" onclick="addManualStudyLog()">
+                            + Add Journal Entry
+                        </button>
+                    </div>
+
+                    <div class="session-history" id="sessionHistoryList">
+                        <!-- Rendered history -->
+                    </div>
+                </div>
+
+                <!-- Principal Daily Routine -->
+                <div class="sidebar-card" style="background: linear-gradient(145deg, #1e1b4b 0%, #121824 100%);">
+                    <h3 class="card-header-title" style="color: #c4b5fd;">
+                        <span>🎯</span> Daily Study Formula
+                    </h3>
+                    <div style="font-size: 0.85rem; color: #cbd5e1; display: flex; flex-direction: column; gap: 6px;">
+                        <div>• <strong>90m</strong>: Read Theory, RFCs & Microsoft Docs</div>
+                        <div>• <strong>120m</strong>: Build Hands-on Lab & Write Tests</div>
+                        <div>• <strong>60m</strong>: Runtime Deep Dive (Source & Allocations)</div>
+                        <div>• <strong>30m</strong>: Write 1-Page Summary & Trade-offs</div>
+                        <div>• <strong>30m</strong>: Self-Review Principal Defense Questions</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quest Mode: Full Content Reader -->
+    <div class="quest-overlay" id="questOverlay">
+        <div class="quest-panel">
+            <div class="quest-content-area" id="questContentArea">
+                <div class="quest-header-bar">
+                    <div>
+                        <span class="quest-badge" id="questBadge">Sprint 01 &middot; Phase 1</span>
+                        <h2 class="quest-title" id="questTitle">Loading quest...</h2>
+                    </div>
+                    <button class="btn" onclick="closeQuest()" style="flex-shrink:0;">✕ Close</button>
+                </div>
+                <div id="questMarkdownBody" class="quest-markdown">
+                    <div class="quest-loading"><span class="spinner">⚙️</span>Loading full chapter content...</div>
+                </div>
+            </div>
+            <div class="quest-sidebar">
+                <h3 style="font-size:0.95rem; font-weight:800; color:#c4b5fd;">Quest Phases</h3>
+                <p style="font-size:0.78rem; color:var(--text-muted);">Complete all 4 phases to finish this quest and earn XP. Read the full content on the left — every section matters.</p>
+                <div class="quest-phase-checklist" id="questPhaseChecklist">
+                    <label class="quest-phase-item" id="phase-theory">
+                        <input type="checkbox" onchange="toggleQuestPhase('theory', this.checked)">
+                        <div>
+                            <div class="quest-phase-label">📖 Theory & Architecture</div>
+                            <div class="quest-phase-desc">Read the full chapter — story, principles, patterns, and code examples</div>
+                        </div>
+                    </label>
+                    <label class="quest-phase-item" id="phase-deepdive">
+                        <input type="checkbox" onchange="toggleQuestPhase('deepdive', this.checked)">
+                        <div>
+                            <div class="quest-phase-label">🔬 Runtime Deep Dive</div>
+                            <div class="quest-phase-desc">Study internals, allocations, failure modes, and production trade-offs</div>
+                        </div>
+                    </label>
+                    <label class="quest-phase-item" id="phase-apply">
+                        <input type="checkbox" onchange="toggleQuestPhase('apply', this.checked)">
+                        <div>
+                            <div class="quest-phase-label">🛠️ Hands-On Apply</div>
+                            <div class="quest-phase-desc">Build the lab, write tests, or implement the pattern in code</div>
+                        </div>
+                    </label>
+                    <label class="quest-phase-item" id="phase-defend">
+                        <input type="checkbox" onchange="toggleQuestPhase('defend', this.checked)">
+                        <div>
+                            <div class="quest-phase-label">🛡️ Principal Defense</div>
+                            <div class="quest-phase-desc">Answer defense questions — can you explain trade-offs to a Staff engineer?</div>
+                        </div>
+                    </label>
+                </div>
+                <div class="quest-xp-reward">
+                    <div class="xp-amount" id="questXpAmount">+100 XP</div>
+                    <div class="xp-label">Quest Reward</div>
+                </div>
+                <button class="btn-complete-quest" id="btnCompleteQuest" onclick="completeQuest()" disabled>
+                    🏆 Complete Quest
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Celebration Modal -->
+    <div class="celebration-overlay" id="celebrationOverlay">
+        <div class="celebration-box" id="celebrationBox">
+            <div class="celebration-icon" id="celebrationIcon">🎉</div>
+            <div class="celebration-title" id="celebrationTitle">Quest Complete!</div>
+            <div class="celebration-subtitle" id="celebrationSubtitle">You mastered a new topic</div>
+            <div class="celebration-xp" id="celebrationXp">+100 XP</div>
+            <button class="btn btn-primary" onclick="closeCelebration()" style="width:100%;">Continue Journey →</button>
+        </div>
+    </div>
+
+    <!-- Achievements Modal -->
+    <div class="modal-overlay" id="achievementsModal">
+        <div class="modal-box" style="max-width:720px;">
+            <h3>🏆 Achievements & Badges</h3>
+            <p style="font-size:0.85rem; color:var(--text-secondary); margin-bottom:16px;">Unlock badges by completing quests, sprints, and maintaining study streaks.</p>
+            <div class="achievements-grid" id="achievementsGrid"></div>
+            <div class="modal-actions" style="margin-top:16px;">
+                <button class="btn" onclick="closeAchievementsModal()">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Backup / Restore Modal -->
+    <div class="modal-overlay" id="backupModal">
+        <div class="modal-box">
+            <h3>Export / Restore Study Data</h3>
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 10px;">
+                Your study checkmarks, notes, and timers are saved automatically in your browser. You can copy this JSON to keep an offline backup:
+            </p>
+            <textarea id="backupTextarea"></textarea>
+            <div class="modal-actions">
+                <button class="btn" onclick="closeBackupModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="importBackupJson()">Import JSON</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Full Curriculum Database matching all files in the repository
+        const initialCurriculum = [
+            {
+                sprintId: 1,
+                sprintCode: "Sprint 01",
+                sprintTitle: "Production-Ready Web API",
+                duration: "Week 1 (7 Days)",
+                description: "Clean Architecture, DI Lifetimes, ASP.NET Core Pipeline, Structured Logging, RFC 7807/9457 ProblemDetails, FluentValidation, Keyset Pagination, SocketsHttpHandler, Probes & Key Vault.",
+                items: [
+                    { id: "s1-01", title: "01 - Production Story (Nova Commerce Genesis)", path: "01-Production-Ready-WebAPI/01-Story.md", status: "done", note: "Understood business context and why architectures must survive 100 developers." },
+                    { id: "s1-02", title: "02 - Learning Objectives & Architecture Competencies", path: "01-Production-Ready-WebAPI/02-Learning-Objectives.md", status: "done", note: "" },
+                    { id: "s1-03", title: "03 - System Requirements & Operational Constraints", path: "01-Production-Ready-WebAPI/03-System-Requirements.md", status: "done", note: "" },
+                    { id: "s1-04", title: "04 - Solution Architecture & Dependency Rules", path: "01-Production-Ready-WebAPI/04-Solution-Architecture.md", status: "done", note: "" },
+                    { id: "s1-05", title: "05 - Clean Architecture: Protecting Business Rules", path: "01-Production-Ready-WebAPI/05-Clean-Architecture.md", status: "done", note: "Domain must remain 100% independent of frameworks and database technologies." },
+                    { id: "s1-06", title: "06 - SOLID Principles in Enterprise Systems", path: "01-Production-Ready-WebAPI/06-SOLID.md", status: "done", note: "" },
+                    { id: "s1-07", title: "07 - Dependency Injection & Lifetime Management", path: "01-Production-Ready-WebAPI/07-Dependency-Injection.md", status: "done", note: "Captive dependencies occur when Singleton captures Scoped DbContext." },
+                    { id: "s1-08", title: "08 - The ASP.NET Core Middleware Pipeline", path: "01-Production-Ready-WebAPI/08-Middleware.md", status: "done", note: "" },
+                    { id: "s1-08a", title: "08A - Inside the ASP.NET Core Pipeline Internals", path: "01-Production-Ready-WebAPI/08A-Inside-ASP.NETCore-Pipeline.md", status: "done", note: "Kestrel -> Socket -> Middleware Delegates -> Endpoint Routing." },
+                    { id: "s1-09", title: "09 - Configuration Architecture", path: "01-Production-Ready-WebAPI/09-Configuration.md", status: "done", note: "" },
+                    { id: "s1-09a", title: "09A - Configuration Providers Internals & Reload", path: "01-Production-Ready-WebAPI/09A – Configuration Providers Internals.md", status: "done", note: "ConfigurationBuilder builds ConfigurationRoot layered provider tree." },
+                    { id: "s1-10", title: "10 - Options Pattern: IOptions, Snapshot & Monitor", path: "01-Production-Ready-WebAPI/10-Options-Pattern.md", status: "done", note: "IOptions=Singleton, Snapshot=Scoped per request, Monitor=Live updates." },
+                    { id: "s1-10a", title: "10A - The Options Ecosystem Internals", path: "01-Production-Ready-WebAPI/10A-The Options Ecosystem.md", status: "done", note: "OptionsFactory creates, OptionsCache caches, IChangeToken notifies." },
+                    { id: "s1-11", title: "11 - Structured Logging & Telemetry Strategy", path: "01-Production-Ready-WebAPI/11-Logging.md", status: "done", note: "Use message templates; avoid string interpolation to prevent heap allocations." },
+                    { id: "s1-11a", title: "11A - Inside Logging Architecture & Zero-Allocation", path: "01-Production-Ready-WebAPI/11A-Inside-Logging-Architecture.md", status: "done", note: "[LoggerMessage] source generator avoids boxing and object[] allocations." },
+                    { id: "s1-12", title: "12 - Global Exception Handling & Error Boundaries", path: "01-Production-Ready-WebAPI/12-Exception-Handling.md", status: "done", note: "Domain Result<T, Error> for business errors; IExceptionHandler for 500 faults." },
+                    { id: "s1-12a", title: "12A - Inside Exception Handling & CLR Unwinding", path: "01-Production-Ready-WebAPI/12A-Inside-Exception-Handling-Internals.md", status: "done", note: "Two-pass CLR search/unwind phase; Response.HasStarted check." },
+                    { id: "s1-13", title: "13 - Input Validation & Domain Invariants (ReDoS)", path: "01-Production-Ready-WebAPI/13-Validation.md", status: "done", note: "FluentValidation in Application; Invariant guards in Domain entities." },
+                    { id: "s1-14", title: "14 - Enterprise REST Best Practices & Keyset Pagination", path: "01-Production-Ready-WebAPI/14-REST-Best-Practices.md", status: "done", note: "Keyset pagination is O(1) seek; Idempotency-Key prevents double charges." },
+                    { id: "s1-15", title: "15 - Resilient Outbound HTTP & IHttpClientFactory", path: "01-Production-Ready-WebAPI/15-HTTP-Clients.md", status: "done", note: "Pools HttpMessageHandler for 2 mins to balance socket reuse and DNS refresh." },
+                    { id: "s1-15a", title: "15A - Inside HttpClient & SocketsHttpHandler Internals", path: "01-Production-Ready-WebAPI/15A-Inside-HttpClient-Internals.md", status: "done", note: "SocketsHttpHandler manages pooled TCP connections per host:port." },
+                    { id: "s1-16", title: "16 - RFC 7807 & RFC 9457 Problem Details Standard", path: "01-Production-Ready-WebAPI/16-ProblemDetails.md", status: "done", note: "Standard application/problem+json error contract." },
+                    { id: "s1-17", title: "17 - API Versioning & Lifecycle Governance (Sunset)", path: "01-Production-Ready-WebAPI/17-API-Versioning.md", status: "done", note: "URL path versioning (/api/v1/) with RFC 8594 Sunset headers." },
+                    { id: "s1-18", title: "18 - OpenAPI Specification & Native .NET Support", path: "01-Production-Ready-WebAPI/18-Swagger-OpenAPI.md", status: "done", note: "Microsoft.AspNetCore.OpenApi native metadata + Kiota SDK generation." },
+                    { id: "s1-19", title: "19 - Health Checks & Container Probes (Anti-Death Spiral)", path: "01-Production-Ready-WebAPI/19-Health-Checks.md", status: "done", note: "Liveness must be 100% in-memory; Readiness checks DB with strict 2s timeout." },
+                    { id: "s1-20", title: "20 - Enterprise Configuration & Secret Management", path: "01-Production-Ready-WebAPI/20-Configuration-Providers.md", status: "done", note: "Zero-trust Azure Managed Identity with Key Vault rotation." },
+                    { id: "s1-21", title: "21 - Principal Production-Ready Release Checklist", path: "01-Production-Ready-WebAPI/21-Production-Checklist.md", status: "done", note: "12-pillar Go/No-Go release gate." },
+                    { id: "s1-22", title: "22 - Hands-On Architecture Labs: Nova Commerce API", path: "01-Production-Ready-WebAPI/22-Hands-On-Labs.md", status: "done", note: "8 architecture labs implemented." },
+                    { id: "s1-23", title: "23 - Production Incident Post-Mortem: Black Friday", path: "01-Production-Ready-WebAPI/23-Production-Incident.md", status: "done", note: "5-Whys analysis of liveness probe death spiral and socket leaks." },
+                    { id: "s1-24", title: "24 - Principal Engineer Architectural Defense Questions", path: "01-Production-Ready-WebAPI/24-Principal-Questions.md", status: "done", note: "Defended Clean Architecture vs CRUD, Keyset vs Offset, Captive DI." },
+                    { id: "s1-25", title: "25 - Staff/Principal Technical Interview Scenarios", path: "01-Production-Ready-WebAPI/25-Interview-Questions.md", status: "done", note: "Payment ingestion design & silent CPU spike triage." },
+                    { id: "s1-26", title: "26 - Sprint 01 Executive Summary & Synthesis", path: "01-Production-Ready-WebAPI/26-Summary.md", status: "done", note: "Sprint 01 mastered." },
+                    { id: "s1-27", title: "27 - Curated Learning Resources & Authoritative References", path: "01-Production-Ready-WebAPI/27-Resources.md", status: "done", note: "" }
+                ]
+            },
+            {
+                sprintId: 2,
+                sprintCode: "Sprint 02",
+                sprintTitle: "Authentication & Security Architecture",
+                duration: "Week 2 (7 Days)",
+                description: "OAuth 2.0 & OIDC, PKCE, RS256/ES256 JWKS Key Rotation, Claims/Policy Authorization, Resource-Based Authorization (Anti-BOLA), Refresh Token Replay Defense, Data Protection Key Ring, and OWASP API Top 10.",
+                items: [
+                    { id: "s2-01", title: "01 - Production Story: The Broken Token Incident", path: "02-Authentication/01-Story.md", status: "done", note: "Cross-tenant scraping breach caused by missing resource authorization." },
+                    { id: "s2-02", title: "02 - Learning Objectives & Security Competency Matrix", path: "02-Authentication/02-Learning-Objectives.md", status: "done", note: "" },
+                    { id: "s2-03", title: "03 - Enterprise Security Requirements (SEC-REQ-01..06)", path: "02-Authentication/03-Security-Requirements.md", status: "done", note: "Mandated OIDC, PKCE, RS256, 10m access tokens, single-use refresh tokens." },
+                    { id: "s2-04", title: "04 - Zero-Trust API Security Architecture", path: "02-Authentication/04-Security-Architecture.md", status: "done", note: "End-to-end zero-trust request processing blueprint." },
+                    { id: "s2-05", title: "05 - OAuth 2.0 & OpenID Connect Architecture", path: "02-Authentication/05-OAuth2-Architecture.md", status: "done", note: "Auth Code + PKCE for SPAs/Mobile; Client Credentials for daemons; BFF pattern." },
+                    { id: "s2-05a", title: "05A - Inside OAuth 2.0 & OIDC Protocol Internals", path: "02-Authentication/05A-Inside-OAuth2-OIDC-Internals.md", status: "done", note: ".well-known/openid-configuration & JWKS discovery mechanics." },
+                    { id: "s2-06", title: "06 - JSON Web Tokens (JWT) Cryptographic Internals", path: "02-Authentication/06-JWT-Crypto-Internals.md", status: "done", note: "Asymmetric RS256 vs symmetric HS256 blast radius; alg:none defense." },
+                    { id: "s2-06a", title: "06A - Inside the JWT Validation Pipeline", path: "02-Authentication/06A-Inside-Jwt-Validation-Pipeline.md", status: "done", note: "JsonWebTokenHandler vs JwtSecurityTokenHandler; OS native SHA-256/RSA." },
+                    { id: "s2-07", title: "07 - Claims-Based & Policy-Based Authorization", path: "02-Authentication/07-Claims-And-Policy-Authorization.md", status: "done", note: "IAuthorizationRequirement + AuthorizationHandler<T> decoupling." },
+                    { id: "s2-07a", title: "07A - Inside the Authorization Policy Engine Internals", path: "02-Authentication/07A-Inside-Policy-Engine.md", status: "done", note: "DefaultAuthorizationService, context.Succeed() and context.Fail() contract." },
+                    { id: "s2-08", title: "08 - Resource-Based Authorization (Defeating BOLA/IDOR)", path: "02-Authentication/08-Resource-Based-Authorization.md", status: "done", note: "IAuthorizationService.AuthorizeAsync(user, entity, op) + EF Core tenant filters." },
+                    { id: "s2-09", title: "09 - Refresh Token Rotation & Distributed Blacklists", path: "02-Authentication/09-Token-Rotation-Revocation.md", status: "done", note: "Token Family replay detection + Redis O(1) revocation blacklist." },
+                    { id: "s2-10", title: "10 - ASP.NET Core Data Protection API & Key Ring", path: "02-Authentication/10-Data-Protection-API.md", status: "done", note: "Centralized Azure Blob key ring with Azure Key Vault RSA HSM envelope encryption." },
+                    { id: "s2-10a", title: "10A - Inside Data Protection Key Ring Internals", path: "02-Authentication/10A-Inside-Data-Protection-KeyRing.md", status: "done", note: "Authenticate-Then-Decrypt payload format & HKDF subkey derivation." },
+                    { id: "s2-11", title: "11 - Cross-Origin Resource Sharing (CORS) Security", path: "02-Authentication/11-CORS-Security-Policy.md", status: "done", note: "Origin whitelisting + SetPreflightMaxAge(24h) preflight caching." },
+                    { id: "s2-12", title: "12 - OWASP API Security Top 10 Enterprise Defense", path: "02-Authentication/12-OWASP-API-Top10-Mitigation.md", status: "done", note: "Systematic architectural mitigations for all 10 API vulnerabilities." },
+                    { id: "s2-13", title: "13 - Principal Security & Threat-Model Release Checklist", path: "02-Authentication/13-Security-Checklist.md", status: "done", note: "Security Go/No-Go audit checklist." },
+                    { id: "s2-14", title: "14 - Hands-On Security Engineering Labs", path: "02-Authentication/14-Hands-On-Security-Labs.md", status: "done", note: "6 labs: JWKS discovery, custom refund handlers, BOLA tests, token rotation." },
+                    { id: "s2-15", title: "15 - Security Incident Post-Mortem: Token Replay", path: "02-Authentication/15-Security-Incident.md", status: "done", note: "SEV-1 post-mortem on token replay and cross-tenant exfiltration." },
+                    { id: "s2-16", title: "16 - Principal Security Architectural Defense Questions", path: "02-Authentication/16-Principal-Defense-Questions.md", status: "done", note: "Defended RS256 vs HS256, BOLA elimination, revocation vs stateless speed." },
+                    { id: "s2-17", title: "17 - Principal Security Technical Interview Scenarios", path: "02-Authentication/17-Interview-Scenarios.md", status: "done", note: "HIPAA healthcare IAM design & zero-downtime key rotation." },
+                    { id: "s2-18", title: "18 - Sprint 02 Executive Summary & Security Synthesis", path: "02-Authentication/18-Summary.md", status: "done", note: "Sprint 02 mastered." },
+                    { id: "s2-19", title: "19 - Curated Security Learning Resources & RFCs", path: "02-Authentication/19-Resources.md", status: "done", note: "" }
+                ]
+            },
+            {
+                sprintId: 3,
+                sprintCode: "Sprint 03",
+                sprintTitle: "Storage & High-Performance Streaming",
+                duration: "Week 3 (7 Days)",
+                description: "Azure Blob Storage, S3 object storage, System.IO.Pipelines zero-allocation streaming, Chunked uploads, HTTP Range requests, Shared Access Signatures (SAS), and CDN edge caching.",
+                items: [
+                    { id: "s3-01", title: "01 - Story: The Large Object Heap Outage", path: "03-Storage/01-Story.md", status: "pending", note: "" },
+                    { id: "s3-02", title: "02 - Learning Objectives & Storage Competencies", path: "03-Storage/02-Learning-Objectives.md", status: "pending", note: "" },
+                    { id: "s3-03", title: "03 - Storage Requirements & SLA Specifications", path: "03-Storage/03-Storage-Requirements.md", status: "pending", note: "" },
+                    { id: "s3-04", title: "04 - High-Throughput Storage & Streaming Architecture", path: "03-Storage/04-Storage-Architecture.md", status: "pending", note: "" },
+                    { id: "s3-05", title: "05 - Cloud Object Storage Architecture (Azure Blob & S3)", path: "03-Storage/05-Blob-Storage-Architecture.md", status: "pending", note: "" },
+                    { id: "s3-05a", title: "05A - Inside Azure Blob Storage REST & Block Commits", path: "03-Storage/05A-Inside-Blob-Storage-Internals.md", status: "pending", note: "" },
+                    { id: "s3-06", title: "06 - High-Performance Streaming with System.IO.Pipelines", path: "03-Storage/06-System-IO-Pipelines.md", status: "pending", note: "" },
+                    { id: "s3-06a", title: "06A - Inside Pipelines Memory & Buffer Pool Internals", path: "03-Storage/06A-Inside-Pipelines-Memory-Internals.md", status: "pending", note: "" },
+                    { id: "s3-07", title: "07 - Resumable Chunked Upload Protocols (TUS & Block Blobs)", path: "03-Storage/07-Chunked-And-Resumable-Uploads.md", status: "pending", note: "" },
+                    { id: "s3-08", title: "08 - Media Delivery with HTTP 206 Partial Content", path: "03-Storage/08-HTTP-Range-Requests-Streaming.md", status: "pending", note: "" },
+                    { id: "s3-09", title: "09 - Delegated Access with Shared Access Signatures (SAS)", path: "03-Storage/09-Direct-Client-Upload-SAS.md", status: "pending", note: "" },
+                    { id: "s3-10", title: "10 - CDN Edge Caching & Cache-Control Architecture", path: "03-Storage/10-CDN-Edge-Caching-Storage.md", status: "pending", note: "" },
+                    { id: "s3-11", title: "11 - Principal Storage & Streaming Release Checklist", path: "03-Storage/11-Storage-Security-Checklist.md", status: "pending", note: "" },
+                    { id: "s3-12", title: "12 - Hands-On Storage & Streaming Architecture Labs", path: "03-Storage/12-Hands-On-Storage-Labs.md", status: "pending", note: "" },
+                    { id: "s3-13", title: "13 - Production Incident Post-Mortem: 50GB Memory Leak", path: "03-Storage/13-Storage-Incident.md", status: "pending", note: "" },
+                    { id: "s3-14", title: "14 - Principal Storage Architectural Defense Questions", path: "03-Storage/14-Principal-Defense-Questions.md", status: "pending", note: "" },
+                    { id: "s3-15", title: "15 - Principal Storage Technical Interview Scenarios", path: "03-Storage/15-Interview-Scenarios.md", status: "pending", note: "" },
+                    { id: "s3-16", title: "16 - Sprint 03 Executive Summary & Storage Synthesis", path: "03-Storage/16-Summary.md", status: "pending", note: "" },
+                    { id: "s3-17", title: "17 - Curated Storage & Streaming Learning Resources", path: "03-Storage/17-Resources.md", status: "pending", note: "" }
+                ]
+            },
+            {
+                sprintId: 4,
+                sprintCode: "Sprint 04",
+                sprintTitle: "Database Performance & Relational Internals",
+                duration: "Week 4 (7 Days)",
+                description: "Execution plans, B-Tree index strategies, lock escalation, transaction isolation levels (RCSI, Serializable), connection pool starvation, EF Core compiled queries, and high-speed Dapper.",
+                items: [
+                    { id: "s4-01", title: "01 - Execution Plans & Index Seek vs Scan", path: "04-Database/01-Execution-Plans.md", status: "pending", note: "" },
+                    { id: "s4-02", title: "02 - B-Tree Clustering, Covering & Filtered Indexes", path: "04-Database/02-Index-Strategies.md", status: "pending", note: "" },
+                    { id: "s4-03", title: "03 - Transaction Isolation Levels (RCSI & Concurrency)", path: "04-Database/03-Isolation-Levels.md", status: "pending", note: "" },
+                    { id: "s4-04", title: "04 - Deadlocks, Lock Escalation & Lock-Free Reads", path: "04-Database/04-Deadlocks-Locking.md", status: "pending", note: "" },
+                    { id: "s4-05", title: "05 - Connection Pool Tuning & Starvation Prevention", path: "04-Database/05-Connection-Pooling.md", status: "pending", note: "" },
+                    { id: "s4-06", title: "06 - EF Core Advanced Interceptors & Compiled Models", path: "04-Database/06-EFCore-Optimization.md", status: "pending", note: "" },
+                    { id: "s4-07", title: "07 - High-Performance Dapper Projections vs EF Core", path: "04-Database/07-Dapper-Performance.md", status: "pending", note: "" },
+                    { id: "s4-08", title: "08 - Database Performance Hands-On Labs & Incidents", path: "04-Database/08-Database-Labs.md", status: "pending", note: "" }
+                ]
+            },
+            {
+                sprintId: 5,
+                sprintCode: "Sprint 05",
+                sprintTitle: "Concurrency & .NET Runtime Internals",
+                duration: "Week 5 (7 Days)",
+                description: "CLR Garbage Collection (Gen 0/1/2, LOH, POH), ThreadPool work-stealing, async state machines, memory profiling with dotnet-dump/dotnet-trace, and lock-free concurrency.",
+                items: [
+                    { id: "s5-01", title: "01 - CLR Garbage Collection Internals (Workstation vs Server)", path: "05-Concurrency/01-GC-Internals.md", status: "pending", note: "" },
+                    { id: "s5-02", title: "02 - Large Object Heap (LOH) & Pinned Object Heap (POH)", path: "05-Concurrency/02-LOH-POH.md", status: "pending", note: "" },
+                    { id: "s5-03", title: "03 - ThreadPool Mechanics & Thread Starvation", path: "05-Concurrency/03-ThreadPool-Starvation.md", status: "pending", note: "" },
+                    { id: "s5-04", title: "04 - Async/Await Roslyn State Machines & ExecutionContext", path: "05-Concurrency/04-Async-State-Machine.md", status: "pending", note: "" },
+                    { id: "s5-05", title: "05 - ValueTask vs Task: Allocation Analysis", path: "05-Concurrency/05-ValueTask-Tradeoffs.md", status: "pending", note: "" },
+                    { id: "s5-06", title: "06 - Memory Diagnostics: dotnet-dump, dotnet-trace & PerfView", path: "05-Concurrency/06-Memory-Diagnostics.md", status: "pending", note: "" },
+                    { id: "s5-07", title: "07 - Lock-Free Synchronization & System.Threading.Channels", path: "05-Concurrency/07-Channels-LockFree.md", status: "pending", note: "" },
+                    { id: "s5-08", title: "08 - BenchmarkDotNet Microbenchmarking Discipline", path: "05-Concurrency/08-BenchmarkDotNet.md", status: "pending", note: "" }
+                ]
+            },
+            {
+                sprintId: 6,
+                sprintCode: "Sprint 06",
+                sprintTitle: "Messaging & Background Processing",
+                duration: "Week 6 (7 Days)",
+                description: "Point-to-point vs Pub/Sub, Transactional Outbox pattern with CDC, Idempotent Consumers, MassTransit, Dead-Letter Queues, and Distributed Sagas.",
+                items: [
+                    { id: "s6-01", title: "01 - Message Broker Architecture (RabbitMQ & Service Bus)", path: "06-Messaging/01-Broker-Architecture.md", status: "pending", note: "" },
+                    { id: "s6-02", title: "02 - The Transactional Outbox Pattern & CDC", path: "06-Messaging/02-Outbox-Pattern.md", status: "pending", note: "" },
+                    { id: "s6-03", title: "03 - Idempotent Message Consumers & Deduplication", path: "06-Messaging/03-Idempotent-Consumers.md", status: "pending", note: "" },
+                    { id: "s6-04", title: "04 - Dead-Letter Queues (DLQ) & Poison Message Triage", path: "06-Messaging/04-DLQ-Poison-Messages.md", status: "pending", note: "" },
+                    { id: "s6-05", title: "05 - Distributed Sagas: Choreography vs Orchestration", path: "06-Messaging/05-Distributed-Sagas.md", status: "pending", note: "" },
+                    { id: "s6-06", title: "06 - High-Throughput Background Processing with Channels", path: "06-Messaging/06-Channels-Background-Workers.md", status: "pending", note: "" }
+                ]
+            },
+            {
+                sprintId: 7,
+                sprintCode: "Sprint 07",
+                sprintTitle: "Distributed Systems Architecture",
+                duration: "Week 7 (7 Days)",
+                description: "CAP Theorem, PACELC, Distributed Caching with Redis, Cache Stampede prevention, Distributed Locks (Redlock & Fencing Tokens), and Eventual Consistency.",
+                items: [
+                    { id: "s7-01", title: "01 - CAP Theorem & PACELC in Enterprise Systems", path: "07-Distributed-Systems/01-CAP-PACELC.md", status: "pending", note: "" },
+                    { id: "s7-02", title: "02 - Distributed Caching Strategies (Cache-Aside, Write-Through)", path: "07-Distributed-Systems/02-Caching-Patterns.md", status: "pending", note: "" },
+                    { id: "s7-03", title: "03 - Cache Stampede Prevention (Probabilistic Expiration)", path: "07-Distributed-Systems/03-Cache-Stampedes.md", status: "pending", note: "" },
+                    { id: "s7-04", title: "04 - Distributed Locking: Redlock, Fencing Tokens & Pitfalls", path: "07-Distributed-Systems/04-Distributed-Locking.md", status: "pending", note: "" },
+                    { id: "s7-05", title: "05 - Eventual Consistency & Conflict Resolution", path: "07-Distributed-Systems/05-Eventual-Consistency.md", status: "pending", note: "" }
+                ]
+            },
+            {
+                sprintId: 8,
+                sprintCode: "Sprint 08",
+                sprintTitle: "Cloud Native Azure Architecture",
+                duration: "Week 8 (7 Days)",
+                description: "Azure Container Apps, Azure API Management (APIM), Azure Front Door, Multi-Region Failover, Private Endpoints, Bicep IaC, and FinOps cloud cost modeling.",
+                items: [
+                    { id: "s8-01", title: "01 - Azure Container Apps & Microservices Hosting", path: "08-Cloud-Native/01-Container-Apps.md", status: "pending", note: "" },
+                    { id: "s8-02", title: "02 - Azure API Management (APIM) & Gateway Policies", path: "08-Cloud-Native/02-APIM-Gateway.md", status: "pending", note: "" },
+                    { id: "s8-03", title: "03 - Azure Front Door & Global Multi-Region Traffic", path: "08-Cloud-Native/03-FrontDoor-Routing.md", status: "pending", note: "" },
+                    { id: "s8-04", title: "04 - Private Endpoints & Zero-Trust Cloud Networking", path: "08-Cloud-Native/04-Private-Endpoints.md", status: "pending", note: "" },
+                    { id: "s8-05", title: "05 - Infrastructure as Code (IaC) with Bicep", path: "08-Cloud-Native/05-Bicep-IaC.md", status: "pending", note: "" },
+                    { id: "s8-06", title: "06 - FinOps: Cloud Cost Modeling & Resource Optimization", path: "08-Cloud-Native/06-FinOps-Cost-Modeling.md", status: "pending", note: "" }
+                ]
+            },
+            {
+                sprintId: 9,
+                sprintCode: "Sprint 09",
+                sprintTitle: "Advanced Observability & Telemetry",
+                duration: "Week 9 (7 Days)",
+                description: "OpenTelemetry .NET SDK, W3C Distributed Tracing with ActivitySource, System.Diagnostics.Metrics, SLI/SLO error budgets, Grafana dashboards, and multi-window burn rate alerts.",
+                items: [
+                    { id: "s9-01", title: "01 - OpenTelemetry SDK & OTLP Collector Architecture", path: "09-Observability/01-OpenTelemetry-SDK.md", status: "pending", note: "" },
+                    { id: "s9-02", title: "02 - Distributed Tracing with ActivitySource & Activity", path: "09-Observability/02-Distributed-Tracing.md", status: "pending", note: "" },
+                    { id: "s9-03", title: "03 - High-Performance Metrics via System.Diagnostics.Metrics", path: "09-Observability/03-Metrics-Instrumentation.md", status: "pending", note: "" },
+                    { id: "s9-04", title: "04 - Defining Actionable SLIs, SLOs & Error Budgets", path: "09-Observability/04-SLO-Error-Budgets.md", status: "pending", note: "" },
+                    { id: "s9-05", title: "05 - Alerting Discipline & Multi-Window Burn Rates", path: "09-Observability/05-Burn-Rate-Alerts.md", status: "pending", note: "" }
+                ]
+            },
+            {
+                sprintId: 10,
+                sprintCode: "Sprint 10",
+                sprintTitle: "Large-Scale System Design",
+                duration: "Week 10 (7 Days)",
+                description: "Capacity estimation, Global E-Commerce Architecture, Real-Time Notification Engine, 500k RPS Financial Telemetry Ingestion, and Architecture Decision Records (ADR).",
+                items: [
+                    { id: "s10-01", title: "01 - Back-of-the-Envelope Estimation & Capacity Modeling", path: "10-System-Design/01-Capacity-Estimation.md", status: "pending", note: "" },
+                    { id: "s10-02", title: "02 - System Design 1: Global High-Availability E-Commerce", path: "10-System-Design/02-Global-ECommerce.md", status: "pending", note: "" },
+                    { id: "s10-03", title: "03 - System Design 2: Real-Time Multi-Tenant Notifications", path: "10-System-Design/03-RealTime-Notifications.md", status: "pending", note: "" },
+                    { id: "s10-04", title: "04 - System Design 3: 500k RPS Financial Ingestion Engine", path: "10-System-Design/04-Telemetry-Ingestion.md", status: "pending", note: "" },
+                    { id: "s10-05", title: "05 - Writing Architecture Decision Records (ADR) that Endure", path: "10-System-Design/05-ADR-Discipline.md", status: "pending", note: "" }
+                ]
+            },
+            {
+                sprintId: 11,
+                sprintCode: "Sprint 11",
+                sprintTitle: "Principal Architecture Review & Governance",
+                duration: "Week 11 (7 Days)",
+                description: "Architecture Review Board (ARB) process, evaluating team RFCs, assessing technical debt, setting engineering standards, and technical leadership without authority.",
+                items: [
+                    { id: "s11-01", title: "01 - The Architecture Review Board (ARB) Governance", path: "11-Architecture-Review/01-ARB-Governance.md", status: "pending", note: "" },
+                    { id: "s11-02", title: "02 - Evaluating RFCs: Spotting Hidden Architectural Flaws", path: "11-Architecture-Review/02-RFC-Evaluation.md", status: "pending", note: "" },
+                    { id: "s11-03", title: "03 - Technical Debt Valuation & Remediation Strategy", path: "11-Architecture-Review/03-Tech-Debt-Valuation.md", status: "pending", note: "" },
+                    { id: "s11-04", title: "04 - Setting Cross-Team Engineering Standards & Guilds", path: "11-Architecture-Review/04-Engineering-Standards.md", status: "pending", note: "" },
+                    { id: "s11-05", title: "05 - Influence Without Authority: Guiding Staff & Senior Engineers", path: "11-Architecture-Review/05-Technical-Leadership.md", status: "pending", note: "" }
+                ]
+            },
+            {
+                sprintId: 12,
+                sprintCode: "Sprint 12",
+                sprintTitle: "Principal Mock Interview & Capstone Defense",
+                duration: "Week 12 (7 Days)",
+                description: "Principal Systems Design live challenge defense, failure triage defense, CTO/VP behavioral leadership defense, and final capstone architecture review.",
+                items: [
+                    { id: "s12-01", title: "01 - Principal Systems Design Mock Defense (Live Challenge)", path: "12-Principal-Review/01-System-Design-Defense.md", status: "pending", note: "" },
+                    { id: "s12-02", title: "02 - Failure Triage & Production Incident Defense", path: "12-Principal-Review/02-Incident-Defense.md", status: "pending", note: "" },
+                    { id: "s12-03", title: "03 - Executive & Behavioral Leadership Defense (CTO / VP Eng)", path: "12-Principal-Review/03-Executive-Leadership.md", status: "pending", note: "" },
+                    { id: "s12-04", title: "04 - Final Capstone Architecture Defense & Certification", path: "12-Principal-Review/04-Capstone-Defense.md", status: "pending", note: "" }
+                ]
+            }
+        ];
+
+        // State Container
+        let studentState = {
+            curriculum: initialCurriculum,
+            sessions: [
+                { date: "Aug 30, 2026", topic: "01-Production-Ready-WebAPI (Sprint 01)", minutes: 360, confidence: 5, notes: "Mastered all 27 chapters, zero-allocation logging, RFC 7807/9457 problem details, and hands-on architecture labs." },
+                { date: "Aug 31, 2026", topic: "02-Authentication & Security (Sprint 02)", minutes: 320, confidence: 5, notes: "Completed OAuth2/OIDC, PKCE, asymmetric JWT crypto (RS256), resource-based authorization (anti-BOLA), and token family replay defense." }
+            ],
+            totalSecondsStudied: 40800,
+            currentFilter: "all",
+            searchQuery: "",
+            game: {
+                totalXp: 0,
+                questProgress: {},
+                unlockedAchievements: [],
+                lastStudyDate: null,
+                dailyMissionDate: null,
+                dailyMissionCompleted: false,
+                sprintBonusesAwarded: []
+            }
+        };
+
+        // =========================================================================
+        // 🎮 PRINCIPAL ENGINEER QUEST ENGINE
+        // =========================================================================
+
+        const RANKS = [
+            { minXp: 0, rank: 1, title: "Apprentice Engineer", icon: "🌱" },
+            { minXp: 300, rank: 2, title: "Junior Developer", icon: "⚡" },
+            { minXp: 800, rank: 3, title: "Software Engineer", icon: "💻" },
+            { minXp: 1500, rank: 4, title: "Senior Engineer", icon: "🔧" },
+            { minXp: 2500, rank: 5, title: "Staff Engineer", icon: "🏛️" },
+            { minXp: 4000, rank: 6, title: "Principal Engineer", icon: "👑" },
+            { minXp: 6000, rank: 7, title: "Distinguished Architect", icon: "🌟" },
+            { minXp: 10000, rank: 8, title: "Master of Systems", icon: "💎" }
+        ];
+
+        const SPRINT_PHASES = [
+            { name: "Foundation", icon: "📖" },
+            { name: "Core Engineering", icon: "⚙️" },
+            { name: "Deep Dive", icon: "🔬" },
+            { name: "Mastery", icon: "🏆" }
+        ];
+
+        const ACHIEVEMENTS = [
+            { id: "first-quest", icon: "🎯", name: "First Blood", desc: "Complete your first quest" },
+            { id: "quests-10", icon: "📚", name: "Dedicated Learner", desc: "Complete 10 quests" },
+            { id: "quests-50", icon: "🧠", name: "Knowledge Seeker", desc: "Complete 50 quests" },
+            { id: "sprint-01", icon: "🏗️", name: "API Architect", desc: "Conquer Sprint 01" },
+            { id: "sprint-02", icon: "🔐", name: "Security Guardian", desc: "Conquer Sprint 02" },
+            { id: "sprint-03", icon: "💾", name: "Storage Master", desc: "Conquer Sprint 03" },
+            { id: "sprint-06", icon: "📨", name: "Messaging Expert", desc: "Conquer Sprint 06" },
+            { id: "sprint-12", icon: "👑", name: "Principal Certified", desc: "Complete all 12 sprints" },
+            { id: "deep-diver", icon: "🔬", name: "Deep Diver", desc: "Complete 5 'Inside' deep-dive chapters" },
+            { id: "streak-3", icon: "🔥", name: "On Fire", desc: "Maintain a 3-day study streak" },
+            { id: "streak-7", icon: "💪", name: "Unstoppable", desc: "Maintain a 7-day study streak" },
+            { id: "streak-14", icon: "🏅", name: "Iron Discipline", desc: "Maintain a 14-day study streak" },
+            { id: "xp-1000", icon: "⭐", name: "Rising Star", desc: "Earn 1,000 total XP" },
+            { id: "xp-5000", icon: "🌟", name: "Elite Engineer", desc: "Earn 5,000 total XP" },
+            { id: "daily-mission", icon: "📋", name: "Mission Accomplished", desc: "Complete a daily mission" }
+        ];
+
+        let activeQuest = null;
+        let currentViewMode = "sprints";
+
+        function ensureGameState() {
+            if (!studentState.game) {
+                studentState.game = { totalXp: 0, questProgress: {}, unlockedAchievements: [], lastStudyDate: null, dailyMissionDate: null, dailyMissionCompleted: false, sprintBonusesAwarded: [] };
+            }
+        }
+
+        function getItemXp(item) {
+            const title = item.title.toLowerCase();
+            const path = item.path.toLowerCase();
+            if (title.includes("hands-on") || title.includes("lab")) return 200;
+            if (title.includes("inside") || path.includes("inside") || /\/\d+a-/i.test(path)) return 150;
+            if (title.includes("incident") || title.includes("defense") || title.includes("interview")) return 175;
+            return 100;
+        }
+
+        function getDoneCount() {
+            let count = 0;
+            studentState.curriculum.forEach(s => s.items.forEach(i => { if (i.status === "done") count++; }));
+            return count;
+        }
+
+        function isSprintComplete(sprintId) {
+            const sprint = studentState.curriculum.find(s => s.sprintId === sprintId);
+            if (!sprint) return false;
+            return sprint.items.every(i => i.status === "done");
+        }
+
+        function isSprintUnlocked(sprintId) {
+            if (sprintId === 1) return true;
+            return isSprintComplete(sprintId - 1);
+        }
+
+        function getSprintPhases(sprint) {
+            const n = sprint.items.length;
+            const cuts = [0, Math.ceil(n * 0.25), Math.ceil(n * 0.5), Math.ceil(n * 0.75), n];
+            return SPRINT_PHASES.map((p, i) => ({
+                ...p,
+                items: sprint.items.slice(cuts[i], cuts[i + 1]),
+                index: i
+            }));
+        }
+
+        function getCurrentRank() {
+            ensureGameState();
+            const xp = studentState.game.totalXp;
+            let rank = RANKS[0];
+            for (const r of RANKS) {
+                if (xp >= r.minXp) rank = r;
+            }
+            return rank;
+        }
+
+        function getNextRank() {
+            const current = getCurrentRank();
+            const idx = RANKS.findIndex(r => r.rank === current.rank);
+            return idx < RANKS.length - 1 ? RANKS[idx + 1] : null;
+        }
+
+        function getStudyStreak() {
+            if (!studentState.sessions || studentState.sessions.length === 0) return 0;
+            const dates = [...new Set(studentState.sessions.map(s => s.date))].sort((a, b) => new Date(b) - new Date(a));
+            let streak = 0;
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            for (let i = 0; i < dates.length; i++) {
+                const d = new Date(dates[i]);
+                d.setHours(0, 0, 0, 0);
+                const expected = new Date(today);
+                expected.setDate(expected.getDate() - i);
+                if (d.getTime() === expected.getTime()) streak++;
+                else if (i === 0 && d.getTime() === expected.getTime() - 86400000) { streak++; }
+                else break;
+            }
+            return streak;
+        }
+
+        function getDeepDiveCount() {
+            let count = 0;
+            studentState.curriculum.forEach(s => s.items.forEach(i => {
+                if (i.status === "done" && (i.title.includes("Inside") || /inside/i.test(i.path))) count++;
+            }));
+            return count;
+        }
+
+        function checkAchievements() {
+            ensureGameState();
+            const done = getDoneCount();
+            const xp = studentState.game.totalXp;
+            const streak = getStudyStreak();
+            const deepDives = getDeepDiveCount();
+            const checks = {
+                "first-quest": done >= 1,
+                "quests-10": done >= 10,
+                "quests-50": done >= 50,
+                "sprint-01": isSprintComplete(1),
+                "sprint-02": isSprintComplete(2),
+                "sprint-03": isSprintComplete(3),
+                "sprint-06": isSprintComplete(6),
+                "sprint-12": isSprintComplete(12),
+                "deep-diver": deepDives >= 5,
+                "streak-3": streak >= 3,
+                "streak-7": streak >= 7,
+                "streak-14": streak >= 14,
+                "xp-1000": xp >= 1000,
+                "xp-5000": xp >= 5000,
+                "daily-mission": studentState.game.dailyMissionCompleted
+            };
+            const newlyUnlocked = [];
+            ACHIEVEMENTS.forEach(a => {
+                if (checks[a.id] && !studentState.game.unlockedAchievements.includes(a.id)) {
+                    studentState.game.unlockedAchievements.push(a.id);
+                    newlyUnlocked.push(a);
+                }
+            });
+            return newlyUnlocked;
+        }
+
+        function awardXp(amount, reason) {
+            ensureGameState();
+            const oldRank = getCurrentRank();
+            studentState.game.totalXp += amount;
+            const newRank = getCurrentRank();
+            updateGameHud();
+            if (newRank.rank > oldRank.rank) {
+                showCelebration(`Rank Up! ${newRank.icon} ${newRank.title}`, `You've reached Rank ${newRank.rank}`, `+${amount} XP`);
+            }
+            return { oldRank, newRank, amount };
+        }
+
+        function updateGameHud() {
+            ensureGameState();
+            const rank = getCurrentRank();
+            const next = getNextRank();
+            const xp = studentState.game.totalXp;
+            const done = getDoneCount();
+            const badges = studentState.game.unlockedAchievements.length;
+            const streak = getStudyStreak();
+
+            document.getElementById("playerAvatar").textContent = rank.icon;
+            document.getElementById("playerRank").textContent = `Rank ${rank.rank}`;
+            document.getElementById("playerTitle").textContent = rank.title;
+
+            if (next) {
+                const progress = ((xp - rank.minXp) / (next.minXp - rank.minXp)) * 100;
+                document.getElementById("xpBarFill").style.width = `${Math.min(progress, 100)}%`;
+                document.getElementById("playerXpText").textContent = `${xp - rank.minXp} / ${next.minXp - rank.minXp} XP to ${next.title}`;
+                document.getElementById("xpBarNumbers").textContent = `${xp} XP`;
+            } else {
+                document.getElementById("xpBarFill").style.width = "100%";
+                document.getElementById("playerXpText").textContent = "Maximum Rank Achieved!";
+                document.getElementById("xpBarNumbers").textContent = `${xp} XP`;
+            }
+
+            document.getElementById("hudQuestsDone").textContent = done;
+            document.getElementById("hudAchievements").textContent = badges;
+            document.getElementById("hudTotalXp").textContent = xp;
+            document.getElementById("valTotalXp").textContent = xp.toLocaleString();
+            document.getElementById("streakText").textContent = `${streak} Day Streak`;
+        }
+
+        function updateDailyMission() {
+            ensureGameState();
+            const next = findNextQuest();
+            const today = new Date().toDateString();
+            if (studentState.game.dailyMissionDate !== today) {
+                studentState.game.dailyMissionDate = today;
+                studentState.game.dailyMissionCompleted = false;
+            }
+            if (next) {
+                document.getElementById("dailyMissionTitle").textContent = next.item.title;
+                document.getElementById("dailyMissionReward").textContent = studentState.game.dailyMissionCompleted ? "✅ Completed Today!" : `+50 Bonus XP`;
+            } else {
+                document.getElementById("dailyMissionTitle").textContent = "All quests conquered! Review and defend your knowledge.";
+                document.getElementById("dailyMissionReward").textContent = "🏆 Champion";
+            }
+        }
+
+        function findNextQuest() {
+            for (const sprint of studentState.curriculum) {
+                if (!isSprintUnlocked(sprint.sprintId)) continue;
+                const item = sprint.items.find(i => i.status !== "done");
+                if (item) return { sprint, item };
+            }
+            return null;
+        }
+
+        function setViewMode(mode) {
+            currentViewMode = mode;
+            document.getElementById("btnViewSprints").classList.toggle("active", mode === "sprints");
+            document.getElementById("btnViewMap").classList.toggle("active", mode === "map");
+            document.getElementById("campaignMap").classList.toggle("visible", mode === "map");
+            document.getElementById("sprintsContainer").style.display = mode === "sprints" ? "" : "none";
+            document.querySelector(".filter-toolbar").style.display = mode === "sprints" ? "" : "none";
+            if (mode === "map") renderCampaignMap();
+        }
+
+        function renderCampaignMap() {
+            const map = document.getElementById("campaignMap");
+            map.innerHTML = "";
+            studentState.curriculum.forEach(sprint => {
+                const unlocked = isSprintUnlocked(sprint.sprintId);
+                const done = sprint.items.filter(i => i.status === "done").length;
+                const total = sprint.items.length;
+                const pct = total > 0 ? (done / total) * 100 : 0;
+                const isComplete = done === total && total > 0;
+                const isActive = unlocked && !isComplete && (sprint.sprintId === 1 || isSprintComplete(sprint.sprintId - 1) || done > 0);
+                const phases = getSprintPhases(sprint);
+
+                const node = document.createElement("div");
+                node.className = `campaign-node ${isComplete ? 'node-complete' : ''} ${isActive ? 'node-active' : ''} ${!unlocked ? 'node-locked' : ''}`;
+                node.onclick = () => {
+                    if (unlocked) {
+                        setViewMode("sprints");
+                        const block = document.getElementById(`sprint-block-${sprint.sprintId}`);
+                        if (block) { block.classList.remove("collapsed"); block.scrollIntoView({ behavior: "smooth" }); }
+                    }
+                };
+
+                const phaseDots = phases.map(ph => {
+                    const phDone = ph.items.every(i => i.status === "done");
+                    const phActive = ph.items.some(i => i.status !== "done") && ph.items.some(i => i.status === "done" || i.status === "in-progress");
+                    return `<div class="node-phase-dot ${phDone ? 'done' : ''} ${phActive ? 'current' : ''}" title="${ph.name}"></div>`;
+                }).join("");
+
+                node.innerHTML = `
+                    <div class="node-number">${sprint.sprintCode} ${!unlocked ? '🔒' : isComplete ? '✅' : ''}</div>
+                    <div class="node-title">${sprint.sprintTitle}</div>
+                    <div style="font-size:0.78rem; color:var(--text-muted);">${done}/${total} quests &middot; ${pct.toFixed(0)}%</div>
+                    <div class="node-progress-bar"><div class="node-progress-fill" style="width:${pct}%"></div></div>
+                    <div class="node-phases">${phaseDots}</div>
+                `;
+                map.appendChild(node);
+            });
+        }
+
+        function renderPhaseProgress(sprint) {
+            const phases = getSprintPhases(sprint);
+            return phases.map((ph, i) => {
+                const phDone = ph.items.filter(i => i.status === "done").length;
+                const phTotal = ph.items.length;
+                const isComplete = phDone === phTotal;
+                const isActive = !isComplete && ph.items.some(i => i.status !== "done") && (i => {
+                    const prevPhases = phases.slice(0, i);
+                    return prevPhases.every(p => p.items.every(it => it.status === "done"));
+                })();
+                let prevAllDone = true;
+                for (let j = 0; j < i; j++) {
+                    if (!phases[j].items.every(it => it.status === "done")) { prevAllDone = false; break; }
+                }
+                const active = !isComplete && prevAllDone && phDone < phTotal;
+                return `<div class="phase-pill ${isComplete ? 'phase-complete' : ''} ${active ? 'phase-active' : ''}">
+                    <div class="phase-pill-icon">${ph.icon}</div>
+                    <div class="phase-pill-name">Phase ${i + 1}: ${ph.name}</div>
+                    <div class="phase-pill-stat">${phDone}/${phTotal}</div>
+                </div>`;
+            }).join("");
+        }
+
+        // Quest Mode: Load full markdown content
+        
+        // Built-in offline Markdown parser fallback (works without CDN)
+        function renderMarkdown(md) {
+            if (typeof marked !== "undefined" && marked.parse) {
+                return marked.parse(md);
+            }
+            // Lightweight robust regex markdown parser
+            let html = md
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+
+            // Code blocks with syntax formatting
+            html = html.replace(/```([a-zA-Z0-9_-]*)\n([\s\S]*?)```/g, function(match, lang, code) {
+                return '<pre class="code-block"><code class="language-' + lang + '">' + code + '</code></pre>';
+            });
+
+            // Inline code
+            html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+
+            // Headers
+            html = html.replace(/^### (.*$)/gim, '<h3>$1</h3>');
+            html = html.replace(/^## (.*$)/gim, '<h2>$1</h2>');
+            html = html.replace(/^# (.*$)/gim, '<h1>$1</h1>');
+
+            // Blockquotes
+            html = html.replace(/^\> (.*$)/gim, '<blockquote>$1</blockquote>');
+
+            // Bold & Italic
+            html = html.replace(/\*\*([^\*]+)\*\*/g, '<strong>$1</strong>');
+            html = html.replace(/\*([^\*]+)\*/g, '<em>$1</em>');
+
+            // Lists
+            html = html.replace(/^\s*[-*+] (.*$)/gim, '<ul><li>$1</li></ul>');
+            html = html.replace(/<\/ul>\s*<ul>/g, '');
+
+            // Paragraphs
+            html = html.replace(/\n\n/g, '</p><p>');
+            return '<p>' + html + '</p>';
+        }
+
+        async function openQuest(sprintId, itemId) {
+            if (!isSprintUnlocked(sprintId)) {
+                alert("🔒 This sprint is locked! Complete the previous sprint to unlock it.");
+                return;
+            }
+            const sprint = studentState.curriculum.find(s => s.sprintId === sprintId);
+            const item = sprint?.items.find(i => i.id === itemId);
+            if (!item) return;
+
+            activeQuest = { sprint, item };
+            ensureGameState();
+
+            document.getElementById("questBadge").textContent = `${sprint.sprintCode} · ${sprint.sprintTitle}`;
+            document.getElementById("questTitle").textContent = item.title;
+            document.getElementById("questXpAmount").textContent = `+${getItemXp(item)} XP`;
+            document.getElementById("questOverlay").classList.add("show");
+            document.getElementById("questMarkdownBody").innerHTML = '<div class="quest-loading"><span class="spinner">⚙️</span>Loading full chapter content...</div>';
+
+            const progress = studentState.game.questProgress[item.id] || { theory: false, deepdive: false, apply: false, defend: false };
+            ["theory", "deepdive", "apply", "defend"].forEach(phase => {
+                const el = document.querySelector(`#phase-${phase} input`);
+                const container = document.getElementById(`phase-${phase}`);
+                if (el) el.checked = progress[phase];
+                if (container) container.classList.toggle("checked", progress[phase]);
+            });
+            updateCompleteQuestButton();
+
+                        // 1. Check in-memory Offline Curriculum DB first (works 100% locally on file:// without CORS!)
+            let markdownContent = null;
+            if (window.OFFLINE_CURRICULUM_DB) {
+                // Normalize path keys
+                const normPath = item.path.replace(/\/g, '/');
+                markdownContent = window.OFFLINE_CURRICULUM_DB[normPath] || window.OFFLINE_CURRICULUM_DB[item.path];
+                if (!markdownContent) {
+                    // Try case-insensitive or base filename lookup
+                    const baseName = normPath.split('/').pop().toLowerCase();
+                    for (const [k, v] of Object.entries(window.OFFLINE_CURRICULUM_DB)) {
+                        if (k.toLowerCase().endsWith(baseName)) {
+                            markdownContent = v;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            if (!markdownContent) {
+                // Fallback to fetch if running via HTTP server
+                try {
+                    const response = await fetch(item.path);
+                    if (response.ok) {
+                        markdownContent = await response.text();
+                    }
+                } catch(e) {
+                    console.log("Fetch failed, searching fallback", e);
+                }
+            }
+
+            if (markdownContent) {
+                const html = renderMarkdown(markdownContent);
+            document.getElementById("questMarkdownBody").innerHTML = html;
+            document.getElementById("questContentArea").scrollTop = 0;
+            } else {
+                document.getElementById("questMarkdownBody").innerHTML = `
+                    <div class="quest-error-box">
+                        <h3>📖 Chapter File Reference</h3>
+                        <p>Chapter path: <code>${item.path}</code></p>
+                        <p style="margin-top:10px;">You can open and read this file directly in VS Code / Cursor or your favorite editor.</p>
+                        <div style="margin-top:14px; padding:12px; background:#0a0f1a; border-radius:6px; font-size:0.85rem;">
+                            <strong>Chapter Notes & Key Focus:</strong><br>
+                            ${item.note || 'Review the architecture principles, invariants, and implementation code for this module.'}
+                        </div>
+                    </div>`;
+            }
+        }
+
+            if (!wasDone) awardXp(xpEarned, item.title);
+
+            if (!wasDone && isSprintComplete(sprint.sprintId) && !studentState.game.sprintBonusesAwarded.includes(sprint.sprintId)) {
+                studentState.game.sprintBonusesAwarded.push(sprint.sprintId);
+                awardXp(500, `Sprint ${sprint.sprintId} Complete`);
+                showCelebration(`🎉 ${sprint.sprintCode} Conquered!`, sprint.sprintTitle, "+500 Sprint Bonus XP");
+            } else if (!wasDone) {
+                showCelebration("Quest Complete!", item.title, `+${xpEarned} XP`);
+            }
+
+            const newAchievements = checkAchievements();
+            saveStudentState();
+            closeQuest();
+            renderAll();
+
+            if (newAchievements.length > 0 && !isSprintComplete(sprint.sprintId)) {
+                setTimeout(() => {
+                    showCelebration(`🏆 Badge Unlocked!`, newAchievements[0].name, newAchievements[0].desc);
+                }, 2500);
+            }
+        }
+
+        function showCelebration(title, subtitle, xpText) {
+            document.getElementById("celebrationTitle").textContent = title;
+            document.getElementById("celebrationSubtitle").textContent = subtitle;
+            document.getElementById("celebrationXp").textContent = xpText;
+            const box = document.getElementById("celebrationBox");
+            box.querySelectorAll(".confetti-piece").forEach(c => c.remove());
+            const colors = ["#8b5cf6", "#3b82f6", "#06b6d4", "#f59e0b", "#10b981", "#f43f5e"];
+            for (let i = 0; i < 30; i++) {
+                const piece = document.createElement("div");
+                piece.className = "confetti-piece";
+                piece.style.left = `${Math.random() * 100}%`;
+                piece.style.top = `${Math.random() * 20}%`;
+                piece.style.background = colors[Math.floor(Math.random() * colors.length)];
+                piece.style.animationDelay = `${Math.random() * 0.5}s`;
+                box.appendChild(piece);
+            }
+            document.getElementById("celebrationOverlay").classList.add("show");
+        }
+
+        function closeCelebration() {
+            document.getElementById("celebrationOverlay").classList.remove("show");
+        }
+
+        function startNextQuest() {
+            const next = findNextQuest();
+            if (next) openQuest(next.sprint.sprintId, next.item.id);
+        }
+
+        function openAchievementsModal() {
+            ensureGameState();
+            const grid = document.getElementById("achievementsGrid");
+            grid.innerHTML = ACHIEVEMENTS.map(a => {
+                const unlocked = studentState.game.unlockedAchievements.includes(a.id);
+                return `<div class="achievement-card ${unlocked ? 'unlocked' : 'locked'}">
+                    <div class="achievement-icon">${unlocked ? a.icon : '🔒'}</div>
+                    <div class="achievement-name">${a.name}</div>
+                    <div class="achievement-desc">${a.desc}</div>
+                </div>`;
+            }).join("");
+            document.getElementById("achievementsModal").classList.add("show");
+        }
+
+        function closeAchievementsModal() {
+            document.getElementById("achievementsModal").classList.remove("show");
+        }
+
+        // Local Storage Key
+        const STORAGE_KEY = "principal_engineer_student_study_tracker_v2";
+
+        // Timer Variables
+        let timerInterval = null;
+        let timerSeconds = 0;
+        let isTimerRunning = false;
+
+        function loadStudentState() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    if (parsed.curriculum) {
+                        studentState = parsed;
+                    }
+                } catch(e) {
+                    console.error("Error loading state", e);
+                }
+            }
+            ensureGameState();
+            migrateXpFromProgress();
+            renderAll();
+        }
+
+        function migrateXpFromProgress() {
+            const done = getDoneCount();
+            if (studentState.game.totalXp === 0 && done > 0) {
+                let xp = 0;
+                studentState.curriculum.forEach(s => s.items.forEach(i => {
+                    if (i.status === "done") xp += getItemXp(i);
+                }));
+                studentState.game.totalXp = xp;
+                studentState.curriculum.forEach(s => {
+                    if (isSprintComplete(s.sprintId)) {
+                        if (!studentState.game.sprintBonusesAwarded.includes(s.sprintId)) {
+                            studentState.game.sprintBonusesAwarded.push(s.sprintId);
+                            xp += 500;
+                        }
+                    }
+                });
+                studentState.game.totalXp = xp;
+            }
+            checkAchievements();
+        }
+
+        function saveStudentState() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(studentState));
+            updateMetrics();
+            updateSmartNextBanner();
+        }
+
+        function renderAll() {
+            renderSprintsTree();
+            renderSessionHistory();
+            updateMetrics();
+            updateSmartNextBanner();
+            updateGameHud();
+            updateDailyMission();
+            if (currentViewMode === "map") renderCampaignMap();
+        }
+
+        // Calculate and Update Dashboard Metrics
+        function updateMetrics() {
+            let totalItems = 0;
+            let doneItems = 0;
+            let completedSprints = 0;
+
+            studentState.curriculum.forEach(sprint => {
+                const sTotal = sprint.items.length;
+                const sDone = sprint.items.filter(i => i.status === "done").length;
+                totalItems += sTotal;
+                doneItems += sDone;
+
+                if (sTotal > 0 && sDone === sTotal) {
+                    completedSprints++;
+                }
+            });
+
+            const pct = totalItems > 0 ? ((doneItems / totalItems) * 100).toFixed(1) : 0;
+            document.getElementById("valOverallPercentage").innerText = `${pct}%`;
+            document.getElementById("barOverallFill").style.width = `${pct}%`;
+            document.getElementById("valItemsDone").innerText = `${doneItems} / ${totalItems}`;
+            document.getElementById("valSprintsDone").innerText = `${completedSprints} / ${studentState.curriculum.length}`;
+            ensureGameState();
+            document.getElementById("valTotalXp").textContent = studentState.game.totalXp.toLocaleString();
+        }
+
+        // Smart Next Target Banner
+        function updateSmartNextBanner() {
+            let foundNext = null;
+            let parentSprint = null;
+
+            for (const sprint of studentState.curriculum) {
+                if (!isSprintUnlocked(sprint.sprintId)) continue;
+                const nextItem = sprint.items.find(i => i.status !== "done");
+                if (nextItem) {
+                    foundNext = nextItem;
+                    parentSprint = sprint;
+                    break;
+                }
+            }
+
+            if (foundNext && parentSprint) {
+                document.getElementById("nextTargetTitle").innerText = foundNext.title;
+                document.getElementById("nextTargetMeta").innerText = `${parentSprint.sprintCode}: ${parentSprint.sprintTitle} · +${getItemXp(foundNext)} XP`;
+                document.getElementById("btnStartNextQuest").style.display = "inline-flex";
+                document.getElementById("btnMarkNextDone").style.display = "none";
+            } else {
+                document.getElementById("nextTargetTitle").innerText = "🎉 All 12 Sprints Conquered! You are a Principal Engineer!";
+                document.getElementById("nextTargetMeta").innerText = "Ready for Capstone Defense & Certification.";
+                document.getElementById("btnStartNextQuest").style.display = "none";
+                document.getElementById("btnMarkNextDone").style.display = "none";
+            }
+        }
+
+        function completeCurrentNextTarget() {
+            for (const sprint of studentState.curriculum) {
+                const nextItem = sprint.items.find(i => i.status !== "done");
+                if (nextItem) {
+                    nextItem.status = "done";
+                    saveStudentState();
+                    renderSprintsTree();
+                    break;
+                }
+            }
+        }
+
+        // Render Sprints Tree & Items
+        function renderSprintsTree() {
+            const container = document.getElementById("sprintsContainer");
+            container.innerHTML = "";
+
+            const q = studentState.searchQuery.toLowerCase();
+            const filter = studentState.currentFilter;
+
+            studentState.curriculum.forEach((sprint) => {
+                const unlocked = isSprintUnlocked(sprint.sprintId);
+
+                // Filter items
+                const matchingItems = sprint.items.filter(item => {
+                    const matchesSearch = !q || item.title.toLowerCase().includes(q) || item.path.toLowerCase().includes(q) || (item.note && item.note.toLowerCase().includes(q));
+                    const matchesStatus = filter === "all" || item.status === filter;
+                    return matchesSearch && matchesStatus;
+                });
+
+                if (q && matchingItems.length === 0) {
+                    return; // Skip sprint if searching and no matches
+                }
+
+                const sTotal = sprint.items.length;
+                const sDone = sprint.items.filter(i => i.status === "done").length;
+                const isFinished = sTotal > 0 && sDone === sTotal;
+                const isInProgress = sDone > 0 && !isFinished;
+
+                let tagClass = "tag-pending";
+                let tagText = "Pending";
+                if (isFinished) {
+                    tagClass = "tag-completed";
+                    tagText = "Completed";
+                } else if (isInProgress) {
+                    tagClass = "tag-in-progress";
+                    tagText = "In Progress";
+                }
+
+                const sprintEl = document.createElement("div");
+                sprintEl.className = `sprint-block ${isFinished ? 'sprint-finished' : ''} ${isInProgress ? 'active-sprint' : ''} ${!unlocked ? 'sprint-locked' : ''} ${isFinished && sprint.sprintId > 3 ? 'collapsed' : ''}`;
+                sprintEl.id = `sprint-block-${sprint.sprintId}`;
+
+                sprintEl.innerHTML = `
+                    <div class="sprint-header-row" onclick="toggleSprintCollapse(${sprint.sprintId})">
+                        <div class="sprint-title-area">
+                            <span class="sprint-code-pill">${sprint.sprintCode}</span>
+                            <span class="sprint-name">${sprint.sprintTitle}</span>
+                            <span class="sprint-progress-stat">(${sDone}/${sTotal} Quests)</span>
+                            ${!unlocked ? '<span class="lock-badge">🔒 Locked</span>' : ''}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            ${unlocked ? `<button class="btn-sprint-action btn-sprint-check" onclick="checkSprint(${sprint.sprintId}, event)" title="Mark all quests in ${sprint.sprintCode} as done">✓ Check All</button>
+                            <button class="btn-sprint-action btn-sprint-uncheck" onclick="uncheckSprint(${sprint.sprintId}, event)" title="Reset all quests in ${sprint.sprintCode}">✕ Reset</button>` : ''}
+                            <span class="sprint-status-tag ${tagClass}">${tagText}</span>
+                            <span class="chevron-icon">▼</span>
+                        </div>
+                    </div>
+                    <div class="sprint-body-content">
+                        <div class="sprint-description-text">${sprint.description}</div>
+                        <div class="phase-progress-row">${renderPhaseProgress(sprint)}</div>
+                        <div class="items-table">
+                            ${matchingItems.map(item => `
+                                <div class="study-item-card ${item.status === 'done' ? 'is-done' : ''} ${item.status === 'in-progress' ? 'is-in-progress' : ''}">
+                                    <div class="study-item-main-row">
+                                        <div class="item-left">
+                                            <input type="checkbox" class="status-checkbox" ${item.status === 'done' ? 'checked' : ''} ${!unlocked ? 'disabled' : ''} onchange="toggleItemCheckbox(${sprint.sprintId}, '${item.id}')">
+                                            <div>
+                                                <div class="item-title-text">${item.title}</div>
+                                                <span class="item-path-badge">${item.path} · +${getItemXp(item)} XP</span>
+                                            </div>
+                                        </div>
+                                        <div class="item-right-controls">
+                                            <button class="btn-quest-start ${item.status === 'done' ? 'quest-done' : ''}" onclick="openQuest(${sprint.sprintId}, '${item.id}')" title="Open full chapter in Quest Mode" ${!unlocked ? 'disabled' : ''}>
+                                                ${item.status === 'done' ? '✅ Done' : '⚔️ Quest'}
+                                            </button>
+                                            <select class="status-selector" onchange="changeItemStatus(${sprint.sprintId}, '${item.id}', this.value)" ${!unlocked ? 'disabled' : ''}>
+                                                <option value="pending" ${item.status === 'pending' ? 'selected' : ''}>Pending</option>
+                                                <option value="in-progress" ${item.status === 'in-progress' ? 'selected' : ''}>In Progress</option>
+                                                <option value="done" ${item.status === 'done' ? 'selected' : ''}>Completed</option>
+                                            </select>
+                                            <button class="btn-note-toggle" onclick="toggleNoteDrawer('${item.id}')">
+                                                📝 Note ${item.note ? '•' : ''}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div class="item-note-drawer ${item.note ? 'open' : ''}" id="note-drawer-${item.id}">
+                                        <textarea placeholder="Write your study notes, key architectural takeaways, or gotchas for this chapter..." onchange="saveItemNote(${sprint.sprintId}, '${item.id}', this.value)">${item.note || ''}</textarea>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(sprintEl);
+            });
+        }
+
+        function toggleSprintCollapse(sprintId) {
+            const block = document.getElementById(`sprint-block-${sprintId}`);
+            if (block) {
+                block.classList.toggle("collapsed");
+            }
+        }
+
+        function toggleItemCheckbox(sprintId, itemId) {
+            if (!isSprintUnlocked(sprintId)) return;
+            const sprint = studentState.curriculum.find(s => s.sprintId === sprintId);
+            if (sprint) {
+                const item = sprint.items.find(i => i.id === itemId);
+                if (item) {
+                    const wasDone = item.status === "done";
+                    item.status = wasDone ? "pending" : "done";
+                    if (!wasDone && item.status === "done") {
+                        awardXp(getItemXp(item), item.title);
+                        checkAchievements();
+                    }
+                    saveStudentState();
+                    renderSprintsTree();
+                    updateGameHud();
+                }
+            }
+        }
+
+        function changeItemStatus(sprintId, itemId, newStatus) {
+            const sprint = studentState.curriculum.find(s => s.sprintId === sprintId);
+            if (sprint) {
+                const item = sprint.items.find(i => i.id === itemId);
+                if (item) {
+                    item.status = newStatus;
+                    saveStudentState();
+                    renderSprintsTree();
+                }
+            }
+        }
+
+        function toggleNoteDrawer(itemId) {
+            const drawer = document.getElementById(`note-drawer-${itemId}`);
+            if (drawer) {
+                drawer.classList.toggle("open");
+            }
+        }
+
+        function saveItemNote(sprintId, itemId, noteText) {
+            const sprint = studentState.curriculum.find(s => s.sprintId === sprintId);
+            if (sprint) {
+                const item = sprint.items.find(i => i.id === itemId);
+                if (item) {
+                    item.note = noteText;
+                    saveStudentState();
+                }
+            }
+        }
+
+        function setFilter(filterType, btnEl) {
+            studentState.currentFilter = filterType;
+            document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+            btnEl.classList.add("active");
+            renderSprintsTree();
+        }
+
+        function handleSearch() {
+            studentState.searchQuery = document.getElementById("searchInput").value.trim();
+            renderSprintsTree();
+        }
+
+        function uncheckSprint(sprintId, event) {
+            if (event) event.stopPropagation();
+            const sprint = studentState.curriculum.find(s => s.sprintId === sprintId);
+            if (sprint) {
+                if (confirm(`Uncheck all ${sprint.items.length} items in ${sprint.sprintCode}: ${sprint.sprintTitle} and set to Pending?`)) {
+                    sprint.items.forEach(i => i.status = "pending");
+                    saveStudentState();
+                    renderAll();
+                }
+            }
+        }
+
+        function checkSprint(sprintId, event) {
+            if (event) event.stopPropagation();
+            const sprint = studentState.curriculum.find(s => s.sprintId === sprintId);
+            if (sprint) {
+                sprint.items.forEach(i => i.status = "done");
+                saveStudentState();
+                renderAll();
+            }
+        }
+
+        function uncheckAllTopics() {
+            if (confirm("Are you sure you want to UNCHECK ALL items across all 12 sprints? (Your personal study notes and focus timer logs will be preserved).")) {
+                studentState.curriculum.forEach(sprint => {
+                    sprint.items.forEach(i => i.status = "pending");
+                });
+                saveStudentState();
+                renderAll();
+                alert("All topics have been unchecked and reset to pending!");
+            }
+        }
+
+        function checkAllTopics() {
+            if (confirm("Mark ALL items across all 12 sprints as completed?")) {
+                studentState.curriculum.forEach(sprint => {
+                    sprint.items.forEach(i => i.status = "done");
+                });
+                saveStudentState();
+                renderAll();
+                alert("All items across the journey marked as completed!");
+            }
+        }
+
+        function markAllSprintDonePrompt() {
+            const sprintNum = prompt("Enter the sprint number to jump/toggle (e.g. 1, 2, or 3):");
+            if (sprintNum) {
+                const sId = parseInt(sprintNum);
+                const sprint = studentState.curriculum.find(s => s.sprintId === sId);
+                if (sprint) {
+                    const action = confirm(`Click OK to mark all items in ${sprint.sprintCode} as DONE, or Cancel to UNCHECK all items in this sprint.`) ? "done" : "pending";
+                    sprint.items.forEach(i => i.status = action);
+                    saveStudentState();
+                    renderAll();
+                    alert(`All items in ${sprint.sprintCode} updated to ${action.toUpperCase()}!`);
+                } else {
+                    alert("Sprint not found.");
+                }
+            }
+        }
+
+        // Focus Timer / Stopwatch Logic
+        function startTimer() {
+            if (isTimerRunning) return;
+            isTimerRunning = true;
+            timerInterval = setInterval(() => {
+                timerSeconds++;
+                studentState.totalSecondsStudied = (studentState.totalSecondsStudied || 0) + 1;
+                updateTimerDisplay();
+            }, 1000);
+        }
+
+        function pauseTimer() {
+            isTimerRunning = false;
+            clearInterval(timerInterval);
+        }
+
+        function resetTimer() {
+            pauseTimer();
+            timerSeconds = 0;
+            updateTimerDisplay();
+        }
+
+        function updateTimerDisplay() {
+            const hrs = String(Math.floor(timerSeconds / 3600)).padStart(2, '0');
+            const mins = String(Math.floor((timerSeconds % 3600) / 60)).padStart(2, '0');
+            const secs = String(timerSeconds % 60).padStart(2, '0');
+            document.getElementById("timerDisplay").innerText = `${hrs}:${mins}:${secs}`;
+        }
+
+        function logTimerSession() {
+            if (timerSeconds < 60) {
+                alert("Please study for at least 1 minute before logging.");
+                return;
+            }
+            const mins = Math.round(timerSeconds / 60);
+            const topic = prompt("What topic did you study during this session?", "Deep Dive Study");
+            if (!topic) return;
+
+            const now = new Date();
+            const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+            studentState.sessions.unshift({
+                date: dateStr,
+                topic: topic,
+                minutes: mins,
+                confidence: 5,
+                notes: `Logged focus timer session (${mins} mins).`
+            });
+
+            resetTimer();
+            saveStudentState();
+            renderSessionHistory();
+            alert(`Logged ${mins} minutes to your study history!`);
+        }
+
+        function addManualStudyLog() {
+            const topic = document.getElementById("logTopicInput").value.trim();
+            const mins = parseInt(document.getElementById("logMinutesInput").value) || 30;
+            const confidence = parseInt(document.getElementById("logConfidenceInput").value) || 5;
+            const notes = document.getElementById("logNotesInput").value.trim();
+
+            if (!topic) {
+                alert("Please enter a topic title.");
+                return;
+            }
+
+            const now = new Date();
+            const dateStr = now.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+            studentState.sessions.unshift({
+                date: dateStr,
+                topic: topic,
+                minutes: mins,
+                confidence: confidence,
+                notes: notes
+            });
+
+            document.getElementById("logTopicInput").value = "";
+            document.getElementById("logMinutesInput").value = "";
+            document.getElementById("logNotesInput").value = "";
+
+            saveStudentState();
+            renderSessionHistory();
+        }
+
+        function renderSessionHistory() {
+            const list = document.getElementById("sessionHistoryList");
+            list.innerHTML = "";
+            studentState.sessions.forEach(s => {
+                const el = document.createElement("div");
+                el.className = "history-entry";
+                const stars = "⭐".repeat(s.confidence || 5);
+                el.innerHTML = `
+                    <div class="history-date">${s.date} &middot; ${s.minutes} min &middot; ${stars}</div>
+                    <div style="font-weight:700; color:#f8fafc; margin-top:2px;">${s.topic}</div>
+                    ${s.notes ? `<div style="color:#94a3b8; font-size:0.78rem; margin-top:3px;">${s.notes}</div>` : ''}
+                `;
+                list.appendChild(el);
+            });
+        }
+
+        // Backup / Restore
+        function openBackupModal() {
+            document.getElementById("backupTextarea").value = JSON.stringify(studentState, null, 2);
+            document.getElementById("backupModal").classList.add("show");
+        }
+
+        function closeBackupModal() {
+            document.getElementById("backupModal").classList.remove("show");
+        }
+
+        function importBackupJson() {
+            try {
+                const parsed = JSON.parse(document.getElementById("backupTextarea").value);
+                if (parsed.curriculum) {
+                    studentState = parsed;
+                    saveStudentState();
+                    renderAll();
+                    closeBackupModal();
+                    alert("Study data restored successfully!");
+                } else {
+                    alert("Invalid study data JSON.");
+                }
+            } catch(e) {
+                alert("JSON Parse error: " + e.message);
+            }
+        }
+
+        // Initialize on page load
+        window.addEventListener("DOMContentLoaded", () => {
+            loadStudentState();
+        });
+    </script>
+</body>
+</html>

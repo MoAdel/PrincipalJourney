@@ -1,1 +1,0 @@
-Secure the API for external enterprise customers.

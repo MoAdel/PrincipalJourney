@@ -1,169 +1,16 @@
-# Swagger and OpenAPI
+# 18 - OpenAPI Specification & Contract Documentation
 
-## Purpose
+> "OpenAPI is not an interactive test page for developers.
+>
+> It is the formal machine-readable contract that defines your API, drives automated client SDK generation, and governs enterprise integration boundaries."
 
-Treat OpenAPI as a product contract and governance artifact. This module assumes the reader already builds ASP.NET Core systems professionally. The goal is to sharpen engineering judgment: why a design exists, how it behaves under load, how it fails, and what evidence a principal engineer needs before launch.
+---
 
-> [!IMPORTANT]
-> The standard is not whether the API works on a developer machine. The standard is whether the design remains understandable, observable, secure, and operable when customers, incidents, and organizational pressure arrive.
+# Why Should a Principal Engineer Care?
 
-## Table of Contents
-
-- [Purpose](#purpose)
-- [Theory](#theory)
-- [Deep Dive](#deep-dive)
-- [How It Works Internally](#how-it-works-internally)
-- [Production Usage](#production-usage)
-- [Common Mistakes](#common-mistakes)
-- [Trade-offs](#trade-offs)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-- [Code Snippets](#code-snippets)
-- [Architecture Notes](#architecture-notes)
-- [Principal Thinking](#principal-thinking)
-- [Review Questions](#review-questions)
-- [References](#references)
-- [Summary](#summary)
-
-## Theory
-
-The production-ready Web API foundation is a set of architectural constraints and runtime behaviors, not a checklist of NuGet packages. A principal engineer treats each framework feature as a design decision with blast radius across security, operability, performance, cost, and long-term maintainability.
-
-Core ideas in this module:
-
-- contract generation
-- security schemes
-- examples
-- production exposure
-- client SDKs
-
-A mature API design separates policy from detail. HTTP, persistence, messaging, cloud configuration, logging, and documentation are details that serve the business capability. They must be explicit, replaceable where necessary, and observable when they fail.
-
-## Deep Dive
-
-| Concern | Principal-level question |
-|---|---|
-| contract generation | Runtime behavior, production failure mode, test evidence, and decision owner |
-| security schemes | Runtime behavior, production failure mode, test evidence, and decision owner |
-| examples | Runtime behavior, production failure mode, test evidence, and decision owner |
-| production exposure | Runtime behavior, production failure mode, test evidence, and decision owner |
-| client SDKs | Runtime behavior, production failure mode, test evidence, and decision owner |
-
-Deep understanding requires following the request from socket acceptance through endpoint execution, dependency resolution, validation, exception translation, response writing, logging, metrics, and cloud platform feedback. The interesting engineering work happens at boundaries: when dependencies are slow, configuration is wrong, clients misuse the API, or the team needs to evolve the contract without breaking revenue-generating consumers.
-
-Performance impact is rarely isolated. A small allocation in middleware can multiply by every request. A missing timeout can exhaust threads. A verbose log property can create significant Application Insights or Log Analytics cost. A poorly scoped dependency can leak memory or corrupt tenant state. A vague error contract can turn every client integration into custom support work.
-
-## How It Works Internally
-
-ASP.NET Core builds a host, loads configuration providers in order, constructs an IServiceProvider, starts Kestrel, and executes requests through a composed middleware pipeline. Endpoint routing selects metadata and delegates. Model binding and validation prepare inputs. Application services execute use cases. Infrastructure adapters talk to databases and remote services. Result execution serializes responses and emits telemetry.
-
-Internal mechanics to reason about:
-
-- The dependency injection container resolves constructor graphs and enforces lifetimes only when scope validation is enabled.
-- Middleware executes in registration order on the way in and reverse order on the way out.
-- Async request handling uses the .NET thread pool; blocking work can starve unrelated requests.
-- Configuration values are layered; later providers override earlier providers.
-- Logging providers receive structured events, scopes, categories, and levels; downstream sinks decide storage and cost.
-- Exceptions are expensive control-flow mechanisms and should represent unexpected failure, not ordinary business decisions.
-
-```mermaid
-flowchart TD
-    Decision[Engineering Decision] --> Runtime[Runtime Behavior]
-    Runtime --> Ops[Operations]
-    Runtime --> Security[Security]
-    Runtime --> Cost[Cost]
-    Ops --> Feedback[Production Feedback]
-    Feedback --> Decision
-```
-
-## Production Usage
-
-Use this capability as part of the launch foundation. Define the production contract, add tests around externally visible behavior, record the operational assumptions, and make the behavior visible through telemetry. Production usage means the team knows how the feature behaves during deploys, scale-out, dependency failure, secret rotation, and partial regional outage.
-
-Operational checklist:
-
-- Define the owner and review cadence.
-- Document environment-specific behavior.
-- Add observable signals: log events, metrics, traces, health checks, or dashboards.
-- Add failure-mode tests where the blast radius is high.
-- Record rollout and rollback instructions.
-- Estimate cost impact before high-volume launch.
-
-## Common Mistakes
-
-| Mistake | Why it hurts in production | Better approach |
-|---|---|---|
-| Treating framework defaults as architecture | Defaults optimize for broad usability, not your launch risk | Make explicit decisions and document them |
-| Mixing domain logic with transport code | Makes tests brittle and contract evolution risky | Keep use cases independent of HTTP details |
-| Ignoring cancellation and timeouts | Slow dependencies can consume threads and sockets | Propagate CancellationToken and bound every call |
-| Logging unbounded payloads | Increases cost and may leak sensitive data | Log identifiers, states, and safe dimensions |
-| Adding abstractions for style only | Creates indirection without resilience | Add abstractions where they protect policy or enable tests |
-
-## Trade-offs
-
-| Decision pressure | Optimize for | Cost |
-|---|---|---|
-| Fast launch | Simpler architecture and fewer moving parts | Less isolation if requirements grow quickly |
-| Enterprise contract stability | Versioning, compatibility tests, documentation | More governance and slower breaking changes |
-| Deep observability | Faster incident response | Storage cost and data classification work |
-| Strong validation | Safer inputs and clearer client errors | More rules to maintain and test |
-| Cloud-native behavior | Better scaling and operations | Requires platform knowledge and automated verification |
-
-```mermaid
-flowchart TD
-    A[Choose approach] --> B{Is it a stable public contract?}
-    B -->|Yes| C[Optimize for compatibility and explicit governance]
-    B -->|No| D[Optimize for simplicity and fast feedback]
-    C --> E[Record decision]
-    D --> E
-    E --> F[Verify with tests and telemetry]
-```
-
-## Best Practices
-
-- Make external contracts explicit: OpenAPI, status codes, ProblemDetails, versioning, pagination, and error semantics.
-- Prefer simple architectural boundaries with strong tests over elaborate layering with weak ownership.
-- Design for failure first: dependency timeout, invalid configuration, expired secret, partial outage, and noisy client.
-- Use structured logs and stable dimensions; avoid high-cardinality values unless necessary.
-- Validate configuration on startup for critical settings.
-- Keep middleware order intentional and reviewed.
-- Define health checks for orchestrators, not for human curiosity alone.
-- Use architecture decision records for choices that affect multiple teams or production operations.
-
-## Examples
-
-### Architecture Decision Record Excerpt
-
-| Field | Example |
-|---|---|
-| Decision | Use typed HttpClient for cohesive downstream APIs |
-| Status | Accepted |
-| Context | The API calls a billing service on the critical request path |
-| Consequence | Better testability and encapsulated resilience policy; more classes to own |
-| Review trigger | New downstream endpoint, latency SLO change, or incident involving billing |
-
-### Production Review Evidence
-
-- Unit tests for domain and application rules.
-- Integration tests for HTTP contract and middleware behavior.
-- Load test showing latency, CPU, memory, and dependency behavior at target concurrency.
-- Dashboard covering request rate, error rate, duration, saturation, dependency calls, and log volume.
-- Runbook explaining rollback, configuration ownership, and incident triage.
-
-
-## Code Snippets
+Many teams treat Swagger as a simple debugging UI:
 
 ```csharp
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen(options =>
-{
-    options.SwaggerDoc("v1", new OpenApiInfo
-    {
-        Title = "Enterprise Public API",
-        Version = "v1"
-    });
-});
-
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -171,72 +18,224 @@ if (app.Environment.IsDevelopment())
 }
 ```
 
-## Architecture Notes
+This superficial view misses the entire point of the **OpenAPI Specification (OAS)**.
 
-The architecture should keep decisions visible. A principal engineer should be able to point to the code and answer: where does policy live, where do side effects happen, where does the public contract get shaped, and where will the team look during an incident?
+As a Principal Engineer, you realize that:
+- **Contract-Driven Development**: The OpenAPI document is the single source of truth for Web, iOS, Android, and third-party integrations.
+- **Automated Client SDK Generation**: Tools like **Microsoft Kiota** and **NSwag** generate strongly typed client libraries directly from your OpenAPI document in CI/CD.
+- **Security Exposure Risks**: Exposing raw Swagger UI in production without authentication leaks internal architectural topologies, database entity schemas, and administrative endpoints to attackers.
+- **Ecosystem Modernization**: ASP.NET Core has transitioned from legacy third-party tools (Swashbuckle) to native, high-performance built-in support (**`Microsoft.AspNetCore.OpenApi`**).
 
-Recommended baseline:
+---
 
-```text
-src/
-  Api/              HTTP, middleware, authentication, OpenAPI, controllers/endpoints
-  Application/      Use cases, ports, validation orchestration, DTOs
-  Domain/           Entities, value objects, invariants, domain services
-  Infrastructure/   EF Core, external HTTP clients, cloud adapters, logging adapters
-  Contracts/        Public request/response contracts if shared deliberately
-tests/
-  UnitTests/
-  IntegrationTests/
-  ArchitectureTests/
+# Production Story
+
+Thursday.
+
+11:45 PM.
+
+A penetration testing firm discovers an open Swagger UI endpoint on Nova Commerce's public production cluster:
+
+```
+https://api.novacommerce.com/swagger/index.html
 ```
 
-Architecture notes for this module:
+The Swagger document was left enabled in production because the frontend team used it for live testing.
 
-- Runtime behavior must be knowable from code and docs.
-- Security boundaries must be enforced close to the request boundary and repeated in domain rules where invariants require it.
-- Maintainability comes from fewer hidden dependencies and clear ownership.
-- Scalability comes from bounded work, async I/O, stateless request handling, and thoughtful dependency limits.
-- Cost control is an architecture concern when telemetry, retries, and cloud resources scale with traffic.
+### What the Attackers Found:
+1. Complete list of all unreleased v2 beta endpoints.
+2. An internal administrative endpoint: `POST /api/internal/admin/flush-cache-and-seed-demo-data`.
+3. Schema definitions revealing internal entity IDs, password hash algorithm fields, and database column names.
 
-## Principal Thinking
+Using this public blueprint, an attacker targeted the exposed admin endpoint and triggered a cache invalidation storm that degraded database performance by 80%.
 
-A principal engineer asks different questions from an implementation owner:
+The incident forced an emergency security patch and an audit of all public contract exposure boundaries.
 
-- Why this approach, and what evidence would change our mind?
-- Why not the simpler built-in default?
-- Why not a more sophisticated platform pattern?
-- When should we avoid this design?
-- What failure mode does this design make easier to detect?
-- What failure mode does it hide?
-- How would Microsoft implement this for a broad Azure customer base?
-- How would Amazon implement this for high-scale, operationally strict service ownership?
+---
 
-Microsoft-style implementation usually emphasizes documented contracts, platform integration, secure defaults, compatibility, and tooling support. Amazon-style implementation usually emphasizes service ownership, operational metrics, blast-radius reduction, explicit runbooks, and continuous correction through incidents. A strong principal engineer can combine both instincts without cargo-culting either company.
+# The Distinction: OpenAPI Specification vs Swagger UI
 
-## Review Questions
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 1. OpenAPI Document (json/yaml)                                             │
+│    • Machine-readable RFC standard (OpenAPI 3.0 / 3.1)                      │
+│    • Generated at compile time or runtime via metadata reflection           │
+│    • Used by SDK generators (Kiota), API Gateways, and linters              │
+└──────────────────────────────────────┬──────────────────────────────────────┘
+                                       │
+                                       ▼
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ 2. Interactive Presentation UIs                                             │
+│    • Swagger UI / Scalar / Redoc / Stoplight Elements                       │
+│    • Visual HTML/JS rendering for human testing                             │
+│    • Should be restricted or disabled in public production                  │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
 
-1. What production failure is most likely if this area is implemented casually?
-2. Which behavior is part of the public contract, and how is it tested?
-3. Which runtime cost grows with request volume?
-4. Which cloud platform feature changes the design assumption?
-5. How would you explain the trade-off to a CTO, an SRE, and a feature team?
-6. What would cause you to revisit this decision in six months?
+---
 
-## References
+# Modern Native OpenAPI in .NET 8/9/10 (`Microsoft.AspNetCore.OpenApi`)
 
-- [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/)
-- [ASP.NET Core fundamentals](https://learn.microsoft.com/aspnet/core/fundamentals/)
-- [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
-- [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/)
-- [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/)
-- Robert C. Martin, Clean Architecture
-- Mark Seemann, Dependency Injection Principles, Practices, and Patterns
-- Jeffrey Richter, CLR via C#
-- Andrew Lock, ASP.NET Core in Action
-- Martin Kleppmann, Designing Data-Intensive Applications
-- Martin Fowler architecture essays
-- Nick Chapsas, advanced .NET and ASP.NET Core content
+Starting in .NET 8/9+, Microsoft introduced native, built-in OpenAPI generation:
 
-## Summary
+### Step 1: Configuration in `Program.cs`
 
-Swagger and OpenAPI is part of the launch foundation for an enterprise-grade public API. The principal-level expectation is not memorizing framework APIs; it is understanding runtime behavior, making trade-offs explicit, proving the design with tests and telemetry, and leaving behind a system that other engineers can operate confidently.
+```csharp
+builder.Services.AddOpenApi("v1", options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        document.Info = new()
+        {
+            Title = "Nova Commerce API",
+            Version = "v1.0",
+            Description = "Production-grade enterprise retail commerce platform API."
+        };
+
+        // Configure JWT Bearer Security Scheme
+        document.Components ??= new();
+        document.Components.SecuritySchemes.Add("Bearer", new()
+        {
+            Type = Microsoft.OpenApi.Models.SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "Enter your JWT Bearer token to access secured endpoints."
+        });
+
+        return Task.CompletedTask;
+    });
+});
+```
+
+---
+
+### Step 2: Documenting Endpoints with Type Safety
+
+```csharp
+app.MapPost("/api/v1/orders", async (
+    [FromBody] CreateOrderRequest request, 
+    IOrderService orderService,
+    CancellationToken ct) =>
+{
+    var result = await orderService.CreateOrderAsync(request, ct);
+
+    return result.Match(
+        order => Results.CreatedAtRoute("GetOrderById", new { id = order.Id }, order),
+        error => Results.Problem(statusCode: 422, title: error.Code, detail: error.Message));
+})
+.WithName("CreateOrder")
+.WithSummary("Creates a new customer order")
+.WithDescription("Validates inventory and reserves stock before returning a 201 Created.")
+.Produces<OrderResponse>(StatusCodes.Status201Created)
+.ProducesProblem(StatusCodes.Status422UnprocessableEntity)
+.ProducesProblem(StatusCodes.Status401Unauthorized)
+.RequireAuthorization();
+```
+
+---
+
+# Modern UI Alternatives: Scalar & Swagger UI
+
+While Swagger UI is the legacy standard, modern tools like **Scalar** provide superior performance, dark mode, and built-in interactive client code generation (C#, TypeScript, Python, cURL):
+
+```csharp
+var app = builder.Build();
+
+app.MapOpenApi(); // Generates /openapi/v1.json
+
+if (app.Environment.IsDevelopment())
+{
+    // High-performance modern API documentation UI:
+    app.MapScalarApiReference();
+}
+```
+
+---
+
+# Automated SDK Generation with Microsoft Kiota
+
+Why write manual `HttpClient` wrappers when you can generate type-safe SDKs automatically?
+
+### Using Microsoft Kiota in CI/CD:
+```bash
+# Generate a strongly typed C# client from the OpenAPI spec:
+kiota generate \
+  --openapi ./openapi/v1.json \
+  --language CSharp \
+  --class-name NovaCommerceClient \
+  --namespace NovaCommerce.ApiClient \
+  --output ./src/Clients/NovaCommerce.ApiClient
+```
+
+### Consumption in Client Applications:
+```csharp
+// Strongly typed, zero-magic strings, full IntelliSense:
+var client = new NovaCommerceClient(requestAdapter);
+var order = await client.Api.V1.Orders[orderId].GetAsync();
+```
+
+---
+
+# Common Mistakes
+
+❌ **Exposing Interactive Swagger UI Unprotected in Public Production**
+```csharp
+// ANTI-PATTERN: Allows unauthenticated internet users to explore internal endpoints
+app.UseSwaggerUI(); // Left active in production
+```
+✅ **Restrict Swagger UI to Development environments or protect behind internal VPN / OAuth authentication policies.**
+
+❌ **Missing Response Type Declarations (`ProducesResponseType`)**
+```csharp
+[HttpGet("{id}")]
+public async Task<IActionResult> Get(Guid id) => Ok(await _repo.GetAsync(id)); // OpenAPI treats output as generic `void`!
+```
+✅ **Use `TypedResults` in Minimal APIs or explicit `[ProducesResponseType(typeof(Dto), 200)]` attributes.**
+
+❌ **Using Object / Dictionary without Concrete Schema Types**
+```csharp
+public IActionResult Process([FromBody] Dictionary<string, object> data) // Destroys schema generation
+```
+✅ **Use strongly typed C# records with clear XML comments or data annotations.**
+
+---
+
+# Architect's Decision
+
+### Scenario
+Nova Commerce provides APIs consumed by an internal React SPA, native iOS/Android mobile apps, and 200+ external enterprise partners.
+
+### Strategy:
+1. **Spec Generation**: Use native `Microsoft.AspNetCore.OpenApi` with compile-time source generated metadata.
+2. **Contract Artifacts**: Export raw `openapi.json` specs during CI/CD build pipelines.
+3. **SDK Generation**: Generate official TypeScript and C# client SDKs via Microsoft Kiota on every main branch release.
+4. **Environment Isolation**: Scalar / Swagger UI active in `Development` and `Staging`; disabled in `Production` (or secured behind corporate SSO).
+
+---
+
+# Principal Thinking
+
+| Level | Perspective | Focus |
+|---|---|---|
+| **Junior** | UI Tool | "I use Swagger UI to click 'Try It Out' instead of Postman." |
+| **Senior** | Documentation | "I add XML comments and response types to generate clean docs." |
+| **Principal** | API Contract & Tooling Ecosystem | "How does our OpenAPI spec govern contract validation, breaking change detection in CI/CD, multi-language SDK generation (Kiota), and API Gateway routing policies?" |
+
+---
+
+# Learning Resources & References
+
+### Authoritative Documentation
+- [OpenAPI Support in ASP.NET Core (.NET 8/9/10) — Microsoft Learn](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/openapi/overview)
+- [Microsoft Kiota: OpenAPI-based SDK Generator](https://learn.microsoft.com/en-us/openapi/kiota/overview)
+- [OpenAPI Specification v3.1 Standard](https://spec.openapis.org/oas/latest.html)
+
+---
+
+# Self Assessment
+
+1. Explain the difference between the OpenAPI Specification document and Swagger UI / Scalar.
+2. Why is exposing Swagger UI in public production environments considered a security vulnerability?
+3. How does Microsoft Kiota automate type-safe API client generation in multi-language environments?
+4. How do you document multiple response status codes (e.g. 200, 400, 404, 422) using `TypedResults` in Minimal APIs?
+5. How can OpenAPI documents be used in CI/CD pipelines to detect breaking contract changes before deployment?

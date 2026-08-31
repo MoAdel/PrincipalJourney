@@ -418,46 +418,69 @@ Always explain failure modes.
 
 ### Completed
 
-- `05 - Clean Architecture` — **COMPLETED**
-- `06 - SOLID` — **COMPLETED**
-- `07 - Dependency Injection` — **COMPLETED**
-- `08 - Middleware` — **COMPLETED**
-- `08A - Inside the ASP.NET Core Pipeline` — **COMPLETED**
-- `09 - Configuration` — **COMPLETED**
-- `09A - Configuration Providers Internals` — **COMPLETED**
-- `10 - Options Pattern` — **COMPLETED**
-- `10A - The Options Ecosystem` — **COMPLETED**
+- `01 - Production-Ready-WebAPI (Sprint 01)` — **COMPLETED**
+  - `01 - Story` to `27 - Resources` — **COMPLETED**
+  - `Challenge 01` — **COMPLETED**
 
-### Current Challenge Work
+- `02 - Authentication & Security (Sprint 02)` — **COMPLETED**
+  - `01 - Story (The Broken Token Incident)` — **COMPLETED**
+  - `02 - Learning Objectives` — **COMPLETED**
+  - `03 - Security Requirements` — **COMPLETED**
+  - `04 - Security Architecture (Zero-Trust Blueprint)` — **COMPLETED**
+  - `05 - OAuth 2.0 & OpenID Connect Architecture` — **COMPLETED**
+  - `05A - Inside OAuth 2.0 & OIDC Protocol Internals` — **COMPLETED**
+  - `06 - JSON Web Tokens (JWT) Cryptographic Internals` — **COMPLETED**
+  - `06A - Inside the JWT Validation Pipeline` — **COMPLETED**
+  - `07 - Claims-Based & Policy-Based Authorization` — **COMPLETED**
+  - `07A - Inside the Policy Engine Internals` — **COMPLETED**
+  - `08 - Resource-Based Authorization (Anti-BOLA/IDOR)` — **COMPLETED**
+  - `09 - Refresh Token Rotation & Distributed Revocation` — **COMPLETED**
+  - `10 - ASP.NET Core Data Protection API` — **COMPLETED**
+  - `10A - Inside Data Protection Key Ring Internals` — **COMPLETED**
+  - `11 - Cross-Origin Resource Sharing (CORS) Security` — **COMPLETED**
+  - `12 - OWASP API Security Top 10 Enterprise Defense` — **COMPLETED**
+  - `13 - Principal Security Release Checklist` — **COMPLETED**
+  - `14 - Hands-On Security Engineering Labs` — **COMPLETED**
+  - `15 - Security Incident Post-Mortem (Token Replay)` — **COMPLETED**
+  - `16 - Principal Security Defense Questions` — **COMPLETED**
+  - `17 - Principal Security Technical Interview Scenarios` — **COMPLETED**
+  - `18 - Sprint 02 Executive Summary & Security Synthesis` — **COMPLETED**
+  - `19 - Curated Security Learning Resources` — **COMPLETED**
+  - `Challenge 02` — **COMPLETED**
 
-- `Challenge 01` — **IN PROGRESS**
-- Detailed Challenge 01 work has started after the conceptual/runtime foundation above.
+- `03 - Storage & Streaming (Sprint 03)` — **COMPLETED**
+  - `01 - Story (The Large Object Heap Outage)` — **COMPLETED**
+  - `02 - Learning Objectives` — **COMPLETED**
+  - `03 - Storage Requirements` — **COMPLETED**
+  - `04 - Storage Architecture Blueprint` — **COMPLETED**
+  - `05 - Cloud Object Storage Architecture (Azure Blob & S3)` — **COMPLETED**
+  - `05A - Inside Azure Blob Storage REST & Block Commit Internals` — **COMPLETED**
+  - `06 - High-Performance Streaming with System.IO.Pipelines` — **COMPLETED**
+  - `06A - Inside Pipelines Memory & Buffer Pool Internals` — **COMPLETED**
+  - `07 - Resumable Chunked Upload Protocols (TUS & Block Blobs)` — **COMPLETED**
+  - `08 - Media Delivery with HTTP 206 Partial Content (Range Requests)` — **COMPLETED**
+  - `09 - Delegated Access with Shared Access Signatures (SAS)` — **COMPLETED**
+  - `10 - CDN Edge Caching & Cache-Control Architecture` — **COMPLETED**
+  - `11 - Principal Storage & Streaming Release Checklist` — **COMPLETED**
+  - `12 - Hands-On Storage & Streaming Architecture Labs` — **COMPLETED**
+  - `13 - Storage Incident Post-Mortem (50GB Memory Leak)` — **COMPLETED**
+  - `14 - Principal Storage Architectural Defense Questions` — **COMPLETED**
+  - `15 - Principal Storage Technical Interview Scenarios` — **COMPLETED**
+  - `16 - Sprint 03 Executive Summary & Storage Synthesis` — **COMPLETED**
+  - `17 - Curated Storage & Streaming Learning Resources` — **COMPLETED**
+  - `Challenge 03` — **COMPLETED**
 
-### Immediate Next Lesson
+### Immediate Next Sprint / Chapter
 
-- `11 - Logging` — **NEXT**
+- `04 - Database Performance & Relational Internals (Sprint 04)` — **NEXT**
 
-Expected Logging coverage:
-
-- Logging architecture.
-- `ILogger`.
-- `ILogger<T>`.
-- `ILoggerFactory`.
-- `ILoggerProvider`.
-- Categories.
-- Log levels.
-- Structured logging.
-- Message templates.
-- Scopes.
-- Filtering.
-- Providers.
-- Performance.
-- Allocation considerations.
-- Correlation.
-- Distributed tracing relationship.
-- Production logging strategy.
-- Sensitive-data concerns.
-- Operational vs diagnostic logging.
+Expected Sprint 04 coverage:
+- SQL Server & PostgreSQL Query Execution Plans (Index Seek vs Scan, Sort Spills)
+- B-Tree Index Strategies, Clustered/Non-Clustered, Covering & Filtered Indexes
+- Transaction Isolation Levels (Read Committed Snapshot Isolation - RCSI vs Serializable)
+- Deadlocks, Lock Escalation & Concurrency Control
+- Connection Pool Starvation & Client Driver Tuning
+- EF Core Interceptors, Split Queries, Compiled Models & High-Performance Dapper Projections
 
 ---
 

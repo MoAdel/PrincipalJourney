@@ -1,247 +1,225 @@
-# Configuration Providers
+# 20 - Enterprise Configuration & Secret Management
 
-## Purpose
+> "Configuration is what allows the same binary to run across local machines, test clusters, and production data centers.
+>
+> Secret management is what prevents that same binary from leaking your organization's kingdom keys."
 
-Compose configuration from files, environment, Key Vault, and app configuration services. This module assumes the reader already builds ASP.NET Core systems professionally. The goal is to sharpen engineering judgment: why a design exists, how it behaves under load, how it fails, and what evidence a principal engineer needs before launch.
+---
 
-> [!IMPORTANT]
-> The standard is not whether the API works on a developer machine. The standard is whether the design remains understandable, observable, secure, and operable when customers, incidents, and organizational pressure arrive.
+# Why Should a Principal Engineer Care?
 
-## Table of Contents
+Many teams start by putting connection strings and API keys into `appsettings.json`:
 
-- [Purpose](#purpose)
-- [Theory](#theory)
-- [Deep Dive](#deep-dive)
-- [How It Works Internally](#how-it-works-internally)
-- [Production Usage](#production-usage)
-- [Common Mistakes](#common-mistakes)
-- [Trade-offs](#trade-offs)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-- [Code Snippets](#code-snippets)
-- [Architecture Notes](#architecture-notes)
-- [Principal Thinking](#principal-thinking)
-- [Review Questions](#review-questions)
-- [References](#references)
-- [Summary](#summary)
-
-## Theory
-
-The production-ready Web API foundation is a set of architectural constraints and runtime behaviors, not a checklist of NuGet packages. A principal engineer treats each framework feature as a design decision with blast radius across security, operability, performance, cost, and long-term maintainability.
-
-Core ideas in this module:
-
-- provider order
-- environment variables
-- Azure App Configuration
-- Key Vault
-- reload
-
-A mature API design separates policy from detail. HTTP, persistence, messaging, cloud configuration, logging, and documentation are details that serve the business capability. They must be explicit, replaceable where necessary, and observable when they fail.
-
-## Deep Dive
-
-| Concern | Principal-level question |
-|---|---|
-| provider order | Runtime behavior, production failure mode, test evidence, and decision owner |
-| environment variables | Runtime behavior, production failure mode, test evidence, and decision owner |
-| Azure App Configuration | Runtime behavior, production failure mode, test evidence, and decision owner |
-| Key Vault | Runtime behavior, production failure mode, test evidence, and decision owner |
-| reload | Runtime behavior, production failure mode, test evidence, and decision owner |
-
-Deep understanding requires following the request from socket acceptance through endpoint execution, dependency resolution, validation, exception translation, response writing, logging, metrics, and cloud platform feedback. The interesting engineering work happens at boundaries: when dependencies are slow, configuration is wrong, clients misuse the API, or the team needs to evolve the contract without breaking revenue-generating consumers.
-
-Performance impact is rarely isolated. A small allocation in middleware can multiply by every request. A missing timeout can exhaust threads. A verbose log property can create significant Application Insights or Log Analytics cost. A poorly scoped dependency can leak memory or corrupt tenant state. A vague error contract can turn every client integration into custom support work.
-
-## How It Works Internally
-
-ASP.NET Core builds a host, loads configuration providers in order, constructs an IServiceProvider, starts Kestrel, and executes requests through a composed middleware pipeline. Endpoint routing selects metadata and delegates. Model binding and validation prepare inputs. Application services execute use cases. Infrastructure adapters talk to databases and remote services. Result execution serializes responses and emits telemetry.
-
-Internal mechanics to reason about:
-
-- The dependency injection container resolves constructor graphs and enforces lifetimes only when scope validation is enabled.
-- Middleware executes in registration order on the way in and reverse order on the way out.
-- Async request handling uses the .NET thread pool; blocking work can starve unrelated requests.
-- Configuration values are layered; later providers override earlier providers.
-- Logging providers receive structured events, scopes, categories, and levels; downstream sinks decide storage and cost.
-- Exceptions are expensive control-flow mechanisms and should represent unexpected failure, not ordinary business decisions.
-
-```mermaid
-flowchart TD
-    Json[appsettings.json] --> Builder
-    EnvJson[appsettings.Production.json] --> Builder
-    UserSecrets[User Secrets] --> Builder
-    EnvVars[Environment Variables] --> Builder
-    KeyVault[Azure Key Vault] --> Builder
-    AppConfig[Azure App Configuration] --> Builder
-    Builder --> IConfiguration
-    IConfiguration --> Options
+```json
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=tcp:sql.novacommerce.com;Database=Prod;User Id=admin;Password=SuperSecret123!;"
+  }
+}
 ```
 
-## Production Usage
+This leads to catastrophic security and operational failures:
+1. **Source Code Secret Leaks**: Developers commit credentials to GitHub, exposing production databases to automated bot scrapers.
+2. **Environment Contamination**: Staging environments accidentally point to production queues or payment gateways.
+3. **Outages During Secret Rotation**: When DB passwords or API keys are rotated, every running service crashes because configuration cannot reload dynamically.
 
-Use this capability as part of the launch foundation. Define the production contract, add tests around externally visible behavior, record the operational assumptions, and make the behavior visible through telemetry. Production usage means the team knows how the feature behaves during deploys, scale-out, dependency failure, secret rotation, and partial regional outage.
+As a Principal Engineer, you design a **multi-layered, zero-trust configuration architecture** where:
+- Secrets are separated from non-sensitive settings.
+- Cloud Managed Identities (Azure Managed Identity / AWS IAM) eliminate credentials entirely.
+- Dynamic reload via `IOptionsMonitor` enables zero-downtime secret rotation.
 
-Operational checklist:
+---
 
-- Define the owner and review cadence.
-- Document environment-specific behavior.
-- Add observable signals: log events, metrics, traces, health checks, or dashboards.
-- Add failure-mode tests where the blast radius is high.
-- Record rollout and rollback instructions.
-- Estimate cost impact before high-volume launch.
+# Production Story
 
-## Common Mistakes
+Sunday.
 
-| Mistake | Why it hurts in production | Better approach |
-|---|---|---|
-| Treating framework defaults as architecture | Defaults optimize for broad usability, not your launch risk | Make explicit decisions and document them |
-| Mixing domain logic with transport code | Makes tests brittle and contract evolution risky | Keep use cases independent of HTTP details |
-| Ignoring cancellation and timeouts | Slow dependencies can consume threads and sockets | Propagate CancellationToken and bound every call |
-| Logging unbounded payloads | Increases cost and may leak sensitive data | Log identifiers, states, and safe dimensions |
-| Adding abstractions for style only | Creates indirection without resilience | Add abstractions where they protect policy or enable tests |
+02:00 AM.
 
-## Trade-offs
+The security operations center triggers an automated secret rotation policy, rotating the production SQL database password in Azure Key Vault.
 
-| Decision pressure | Optimize for | Cost |
-|---|---|---|
-| Fast launch | Simpler architecture and fewer moving parts | Less isolation if requirements grow quickly |
-| Enterprise contract stability | Versioning, compatibility tests, documentation | More governance and slower breaking changes |
-| Deep observability | Faster incident response | Storage cost and data classification work |
-| Strong validation | Safer inputs and clearer client errors | More rules to maintain and test |
-| Cloud-native behavior | Better scaling and operations | Requires platform knowledge and automated verification |
+Within 60 seconds, all 40 API instances began throwing `SqlException: Login failed for user 'app-svc'`.
 
-```mermaid
-flowchart TD
-    A[Choose approach] --> B{Is it a stable public contract?}
-    B -->|Yes| C[Optimize for compatibility and explicit governance]
-    B -->|No| D[Optimize for simplicity and fast feedback]
-    C --> E[Record decision]
-    D --> E
-    E --> F[Verify with tests and telemetry]
+### What Went Wrong:
+1. The application had bound the database connection string at startup using a Singleton `IOptions<DatabaseOptions>`.
+2. Even though Azure Key Vault updated the secret, the Singleton `IOptions` instance never reloaded.
+3. When existing pooled connections expired and attempted to re-authenticate, they used the old password and were locked out by the database server.
+
+The entire platform remained down until a DevOps engineer manually rebooted all 40 container pods.
+
+The outage was not caused by rotation. It was caused by the failure to design for **dynamic configuration updates**.
+
+---
+
+# The Enterprise Configuration Hierarchy
+
+ASP.NET Core resolves configuration in a strict hierarchical order where **later providers override earlier providers**:
+
+```
+1. appsettings.json
+        │ (Base non-sensitive defaults)
+        ▼
+2. appsettings.{Environment}.json
+        │ (Environment-specific overrides: Staging, Production)
+        ▼
+3. User Secrets (Development Only)
+        │ (Local developer machine secrets)
+        ▼
+4. Environment Variables
+        │ (Container / Kubernetes ConfigMaps & Secrets)
+        ▼
+5. Azure Key Vault / AWS Secrets Manager
+        │ (Production Secrets, Certificates, API Keys)
+        ▼
+6. Command-Line Arguments
+        │ (Explicit runtime launch overrides)
+        ▼
+Final IConfigurationRoot
 ```
 
-## Best Practices
+---
 
-- Make external contracts explicit: OpenAPI, status codes, ProblemDetails, versioning, pagination, and error semantics.
-- Prefer simple architectural boundaries with strong tests over elaborate layering with weak ownership.
-- Design for failure first: dependency timeout, invalid configuration, expired secret, partial outage, and noisy client.
-- Use structured logs and stable dimensions; avoid high-cardinality values unless necessary.
-- Validate configuration on startup for critical settings.
-- Keep middleware order intentional and reviewed.
-- Define health checks for orchestrators, not for human curiosity alone.
-- Use architecture decision records for choices that affect multiple teams or production operations.
+# Environment Variables: The Double-Underscore Rule
 
-## Examples
+In Linux containers and Kubernetes:
+- JSON nested hierarchies use colons (e.g., `Database:ConnectionString`).
+- Linux environment variables **do not support colons** in variable names.
 
-### Architecture Decision Record Excerpt
+ASP.NET Core resolves this using **double underscores (`__`)**:
 
-| Field | Example |
-|---|---|
-| Decision | Use typed HttpClient for cohesive downstream APIs |
-| Status | Accepted |
-| Context | The API calls a billing service on the critical request path |
-| Consequence | Better testability and encapsulated resilience policy; more classes to own |
-| Review trigger | New downstream endpoint, latency SLO change, or incident involving billing |
+```bash
+# In Kubernetes Pod manifest or Dockerfile:
+export Database__ConnectionString="Server=sql-prod;Database=Orders;..."
+export Storage__RetryCount="5"
+```
 
-### Production Review Evidence
+The runtime configuration provider automatically translates `Database__ConnectionString` into the hierarchical key `Database:ConnectionString`.
 
-- Unit tests for domain and application rules.
-- Integration tests for HTTP contract and middleware behavior.
-- Load test showing latency, CPU, memory, and dependency behavior at target concurrency.
-- Dashboard covering request rate, error rate, duration, saturation, dependency calls, and log volume.
-- Runbook explaining rollback, configuration ownership, and incident triage.
+---
 
+# Zero-Trust Secret Management with Azure Key Vault
 
-## Code Snippets
+In production, eliminate hardcoded secrets using **Azure Key Vault** and **Managed Identities**:
 
 ```csharp
-public sealed class CreateOrderHandler
-{
-    private readonly IOrderRepository _orders;
-    private readonly TimeProvider _clock;
+var builder = WebApplication.CreateBuilder(args);
 
-    public CreateOrderHandler(IOrderRepository orders, TimeProvider clock)
+if (builder.Environment.IsProduction())
+{
+    var keyVaultUri = new Uri(builder.Configuration["KeyVault:VaultUri"]!);
+
+    // Connect using Managed Identity (Zero passwords stored in code or config!):
+    builder.Configuration.AddAzureKeyVault(
+        keyVaultUri, 
+        new DefaultAzureCredential(),
+        new AzureKeyVaultConfigurationOptions
+        {
+            // Poll for rotated secrets every 15 minutes:
+            ReloadInterval = TimeSpan.FromMinutes(15)
+        });
+}
+```
+
+### Why Managed Identity is the Gold Standard:
+- **No Passwords**: The cloud infrastructure (Azure / AWS) automatically issues short-lived, rotated OAuth tokens directly to the container VM.
+- **Role-Based Access Control (RBAC)**: Fine-grained permissions (e.g. read-only access to specific secrets).
+
+---
+
+# Dynamic Reload with `IOptionsMonitor<T>`
+
+When a secret rotates in Key Vault, how do your background services and repositories update without a restart?
+
+```csharp
+public sealed class PaymentGatewayClient
+{
+    private readonly IOptionsMonitor<PaymentGatewayOptions> _optionsMonitor;
+    private readonly ILogger<PaymentGatewayClient> _logger;
+
+    public PaymentGatewayClient(
+        IOptionsMonitor<PaymentGatewayOptions> optionsMonitor,
+        ILogger<PaymentGatewayClient> logger)
     {
-        _orders = orders;
-        _clock = clock;
+        _optionsMonitor = optionsMonitor;
+        _logger = logger;
+
+        // Subscribe to live rotation events:
+        _optionsMonitor.OnChange(newOptions =>
+        {
+            _logger.LogInformation("Payment Gateway API Key rotated successfully at {Time}", DateTime.UtcNow);
+        });
     }
 
-    public async Task<Result<OrderDto>> HandleAsync(CreateOrderCommand command, CancellationToken cancellationToken)
+    public async Task ProcessAsync()
     {
-        var order = Order.Create(command.CustomerId, command.Lines, _clock.GetUtcNow());
-        await _orders.SaveAsync(order, cancellationToken);
-        return Result.Success(OrderDto.From(order));
+        // Always gets the latest rotated secret:
+        var currentApiKey = _optionsMonitor.CurrentValue.ApiKey;
+        // ...
     }
 }
 ```
 
-## Architecture Notes
+---
 
-The architecture should keep decisions visible. A principal engineer should be able to point to the code and answer: where does policy live, where do side effects happen, where does the public contract get shaped, and where will the team look during an incident?
+# Common Mistakes
 
-Recommended baseline:
-
-```text
-src/
-  Api/              HTTP, middleware, authentication, OpenAPI, controllers/endpoints
-  Application/      Use cases, ports, validation orchestration, DTOs
-  Domain/           Entities, value objects, invariants, domain services
-  Infrastructure/   EF Core, external HTTP clients, cloud adapters, logging adapters
-  Contracts/        Public request/response contracts if shared deliberately
-tests/
-  UnitTests/
-  IntegrationTests/
-  ArchitectureTests/
+❌ **Committing `appsettings.Production.json` with Real Passwords to Git**
+```json
+{ "Password": "RealProdPassword" } // COMMITTED TO GIT = COMPROMISED
 ```
+✅ **Add `appsettings.Production.json` or sensitive secrets to `.gitignore`; inject secrets via Key Vault or CI/CD pipelines.**
 
-Architecture notes for this module:
+❌ **Using `IConfiguration` Everywhere Directly**
+```csharp
+var conn = _config["Database:Connection"]; // Magic strings, no validation, hard to test
+```
+✅ **Use strongly typed Options classes (`IOptions<T>`, `IOptionsMonitor<T>`).**
 
-- Runtime behavior must be knowable from code and docs.
-- Security boundaries must be enforced close to the request boundary and repeated in domain rules where invariants require it.
-- Maintainability comes from fewer hidden dependencies and clear ownership.
-- Scalability comes from bounded work, async I/O, stateless request handling, and thoughtful dependency limits.
-- Cost control is an architecture concern when telemetry, retries, and cloud resources scale with traffic.
+❌ **Failing to Validate Configuration at Startup**
+```csharp
+// If a required secret is missing in Key Vault, the app starts and only crashes hours later when a customer hits the endpoint.
+```
+✅ **Use `builder.Services.AddOptions<T>().BindConfiguration("...").ValidateDataAnnotations().ValidateOnStart();` to Fail Fast.**
 
-## Principal Thinking
+---
 
-A principal engineer asks different questions from an implementation owner:
+# Architect's Decision
 
-- Why this approach, and what evidence would change our mind?
-- Why not the simpler built-in default?
-- Why not a more sophisticated platform pattern?
-- When should we avoid this design?
-- What failure mode does this design make easier to detect?
-- What failure mode does it hide?
-- How would Microsoft implement this for a broad Azure customer base?
-- How would Amazon implement this for high-scale, operationally strict service ownership?
+### Scenario
+Nova Commerce deploys microservices across 3 Azure regions. Compliance requires automated monthly secret rotation for all databases and payment credentials.
 
-Microsoft-style implementation usually emphasizes documented contracts, platform integration, secure defaults, compatibility, and tooling support. Amazon-style implementation usually emphasizes service ownership, operational metrics, blast-radius reduction, explicit runbooks, and continuous correction through incidents. A strong principal engineer can combine both instincts without cargo-culting either company.
+### Strategy:
+1. **Configuration Layering**: Base defaults in `appsettings.json`, cloud overrides in Azure App Configuration, secrets in Azure Key Vault.
+2. **Authentication**: All container instances authenticate to Key Vault using Azure Managed Identities (zero stored client secrets).
+3. **Rotation**: Key Vault provider configured with 15-minute reload interval.
+4. **Consumption**: Database connection pools and HTTP clients use `IOptionsMonitor` with dynamic re-connection on credential rotation.
+5. **Validation**: Critical configuration validated on startup via `ValidateOnStart()`.
 
-## Review Questions
+---
 
-1. What production failure is most likely if this area is implemented casually?
-2. Which behavior is part of the public contract, and how is it tested?
-3. Which runtime cost grows with request volume?
-4. Which cloud platform feature changes the design assumption?
-5. How would you explain the trade-off to a CTO, an SRE, and a feature team?
-6. What would cause you to revisit this decision in six months?
+# Principal Thinking
 
-## References
+| Level | Perspective | Focus |
+|---|---|---|
+| **Junior** | File storage | "I put my API key in appsettings.json." |
+| **Senior** | Environment variables | "I override settings in Docker using environment variables." |
+| **Principal** | Zero-Trust & Lifecycle | "How do we eliminate long-lived credentials with Managed Identities? How do our connection pools handle automated secret rotation without dropping customer requests?" |
 
-- [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/)
-- [ASP.NET Core fundamentals](https://learn.microsoft.com/aspnet/core/fundamentals/)
-- [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
-- [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/)
-- [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/)
-- Robert C. Martin, Clean Architecture
-- Mark Seemann, Dependency Injection Principles, Practices, and Patterns
-- Jeffrey Richter, CLR via C#
-- Andrew Lock, ASP.NET Core in Action
-- Martin Kleppmann, Designing Data-Intensive Applications
-- Martin Fowler architecture essays
-- Nick Chapsas, advanced .NET and ASP.NET Core content
+---
 
-## Summary
+# Learning Resources & References
 
-Configuration Providers is part of the launch foundation for an enterprise-grade public API. The principal-level expectation is not memorizing framework APIs; it is understanding runtime behavior, making trade-offs explicit, proving the design with tests and telemetry, and leaving behind a system that other engineers can operate confidently.
+### Authoritative Documentation
+- [Configuration in ASP.NET Core — Microsoft Learn](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/configuration/)
+- [Azure Key Vault Configuration Provider in .NET](https://learn.microsoft.com/en-us/azure/key-vault/general/tutorial-net-virtual-machine)
+- [Zero Trust Security Model Architecture](https://learn.microsoft.com/en-us/security/zero-trust/)
+
+---
+
+# Self Assessment
+
+1. Explain the order of precedence in ASP.NET Core's default configuration provider hierarchy.
+2. How does ASP.NET Core map Linux environment variables with double underscores (`__`) to nested JSON keys?
+3. What is the security advantage of Azure Managed Identity over storing client credentials in environment variables?
+4. How does `IOptionsMonitor<T>` enable zero-downtime secret rotation compared to `IOptions<T>`?
+5. Why is `ValidateOnStart()` considered a critical production safety pattern?

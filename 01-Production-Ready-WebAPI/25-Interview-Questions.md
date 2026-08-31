@@ -1,272 +1,73 @@
-# Interview Questions
+# 25 - Principal & Staff Engineer Technical Interview Scenarios
 
-## Purpose
+> "In a Principal-level interview, interviewers are not testing whether you know the syntax of a framework.
+>
+> They are testing your mental models, systems thinking, failure reasoning, and ability to make trade-offs under extreme ambiguity."
 
-Prepare senior, staff, and principal-level interview questions for Web API architecture. This module assumes the reader already builds ASP.NET Core systems professionally. The goal is to sharpen engineering judgment: why a design exists, how it behaves under load, how it fails, and what evidence a principal engineer needs before launch.
+---
 
-> [!IMPORTANT]
-> The standard is not whether the API works on a developer machine. The standard is whether the design remains understandable, observable, secure, and operable when customers, incidents, and organizational pressure arrive.
+# Evaluation Rubric for Principal Candidates
 
-## Table of Contents
-
-- [Purpose](#purpose)
-- [Theory](#theory)
-- [Deep Dive](#deep-dive)
-- [How It Works Internally](#how-it-works-internally)
-- [Production Usage](#production-usage)
-- [Common Mistakes](#common-mistakes)
-- [Trade-offs](#trade-offs)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-- [Code Snippets](#code-snippets)
-- [Architecture Notes](#architecture-notes)
-- [Principal Thinking](#principal-thinking)
-- [Review Questions](#review-questions)
-- [References](#references)
-- [Summary](#summary)
-
-## Theory
-
-The production-ready Web API foundation is a set of architectural constraints and runtime behaviors, not a checklist of NuGet packages. A principal engineer treats each framework feature as a design decision with blast radius across security, operability, performance, cost, and long-term maintainability.
-
-Core ideas in this module:
-
-- senior questions
-- staff questions
-- principal questions
-- system design
-- architecture review
-
-A mature API design separates policy from detail. HTTP, persistence, messaging, cloud configuration, logging, and documentation are details that serve the business capability. They must be explicit, replaceable where necessary, and observable when they fail.
-
-## Deep Dive
-
-| Concern | Principal-level question |
-|---|---|
-| senior questions | Runtime behavior, production failure mode, test evidence, and decision owner |
-| staff questions | Runtime behavior, production failure mode, test evidence, and decision owner |
-| principal questions | Runtime behavior, production failure mode, test evidence, and decision owner |
-| system design | Runtime behavior, production failure mode, test evidence, and decision owner |
-| architecture review | Runtime behavior, production failure mode, test evidence, and decision owner |
-
-Deep understanding requires following the request from socket acceptance through endpoint execution, dependency resolution, validation, exception translation, response writing, logging, metrics, and cloud platform feedback. The interesting engineering work happens at boundaries: when dependencies are slow, configuration is wrong, clients misuse the API, or the team needs to evolve the contract without breaking revenue-generating consumers.
-
-Performance impact is rarely isolated. A small allocation in middleware can multiply by every request. A missing timeout can exhaust threads. A verbose log property can create significant Application Insights or Log Analytics cost. A poorly scoped dependency can leak memory or corrupt tenant state. A vague error contract can turn every client integration into custom support work.
-
-## How It Works Internally
-
-ASP.NET Core builds a host, loads configuration providers in order, constructs an IServiceProvider, starts Kestrel, and executes requests through a composed middleware pipeline. Endpoint routing selects metadata and delegates. Model binding and validation prepare inputs. Application services execute use cases. Infrastructure adapters talk to databases and remote services. Result execution serializes responses and emits telemetry.
-
-Internal mechanics to reason about:
-
-- The dependency injection container resolves constructor graphs and enforces lifetimes only when scope validation is enabled.
-- Middleware executes in registration order on the way in and reverse order on the way out.
-- Async request handling uses the .NET thread pool; blocking work can starve unrelated requests.
-- Configuration values are layered; later providers override earlier providers.
-- Logging providers receive structured events, scopes, categories, and levels; downstream sinks decide storage and cost.
-- Exceptions are expensive control-flow mechanisms and should represent unexpected failure, not ordinary business decisions.
-
-```mermaid
-flowchart TD
-    Decision[Engineering Decision] --> Runtime[Runtime Behavior]
-    Runtime --> Ops[Operations]
-    Runtime --> Security[Security]
-    Runtime --> Cost[Cost]
-    Ops --> Feedback[Production Feedback]
-    Feedback --> Decision
-```
-
-## Production Usage
-
-Use this capability as part of the launch foundation. Define the production contract, add tests around externally visible behavior, record the operational assumptions, and make the behavior visible through telemetry. Production usage means the team knows how the feature behaves during deploys, scale-out, dependency failure, secret rotation, and partial regional outage.
-
-Operational checklist:
-
-- Define the owner and review cadence.
-- Document environment-specific behavior.
-- Add observable signals: log events, metrics, traces, health checks, or dashboards.
-- Add failure-mode tests where the blast radius is high.
-- Record rollout and rollback instructions.
-- Estimate cost impact before high-volume launch.
-
-## Common Mistakes
-
-| Mistake | Why it hurts in production | Better approach |
+| Signal | Senior Candidate | Staff / Principal Candidate |
 |---|---|---|
-| Treating framework defaults as architecture | Defaults optimize for broad usability, not your launch risk | Make explicit decisions and document them |
-| Mixing domain logic with transport code | Makes tests brittle and contract evolution risky | Keep use cases independent of HTTP details |
-| Ignoring cancellation and timeouts | Slow dependencies can consume threads and sockets | Propagate CancellationToken and bound every call |
-| Logging unbounded payloads | Increases cost and may leak sensitive data | Log identifiers, states, and safe dimensions |
-| Adding abstractions for style only | Creates indirection without resilience | Add abstractions where they protect policy or enable tests |
+| **Architecture** | Proposes standard 3-tier layering or Clean Architecture dogma. | Evaluates boundary costs, deployment independence, domain cohesion, and team cognitive load. |
+| **Resilience** | Mentions `try-catch` blocks and Polly retry policies. | Designs for partial failure, bulkheads, exponential backoff with jitter, idempotency keys, and death-spiral prevention. |
+| **Performance** | Suggests "adding Redis cache" or "scaling up servers". | Analyzes GC Gen 0/1 allocations, socket pooling, connection limits, keyset pagination, and async I/O bottlenecks. |
+| **Observability** | "We log errors to console or Serilog." | Emphasizes structured logging, W3C distributed tracing, correlation scopes, cardinality cost control, and actionable SLO alerts. |
+| **Failure Modes** | Assumes the network and database are mostly reliable. | Designs assuming networks will fail, secrets will rotate, clients will retry, and downstream dependencies will degrade. |
 
-## Trade-offs
+---
 
-| Decision pressure | Optimize for | Cost |
-|---|---|---|
-| Fast launch | Simpler architecture and fewer moving parts | Less isolation if requirements grow quickly |
-| Enterprise contract stability | Versioning, compatibility tests, documentation | More governance and slower breaking changes |
-| Deep observability | Faster incident response | Storage cost and data classification work |
-| Strong validation | Safer inputs and clearer client errors | More rules to maintain and test |
-| Cloud-native behavior | Better scaling and operations | Requires platform knowledge and automated verification |
+# Scenario 1: Designing an Enterprise Payment Ingestion API
 
-```mermaid
-flowchart TD
-    A[Choose approach] --> B{Is it a stable public contract?}
-    B -->|Yes| C[Optimize for compatibility and explicit governance]
-    B -->|No| D[Optimize for simplicity and fast feedback]
-    C --> E[Record decision]
-    D --> E
-    E --> F[Verify with tests and telemetry]
-```
+### The Prompt:
+*"Design a mission-critical payment ingestion API that handles 25,000 requests per second. The downstream banking gateway has a 99.5% availability SLA and occasional 3-second latency spikes. How do you design this API to ensure zero lost transactions and zero double-charges?"*
 
-## Best Practices
+### Expected Principal Response Structure:
+1. **API Ingress Boundary**:
+   - Require a client-generated `Idempotency-Key` (UUIDv4) header on all payment submission requests.
+   - Store idempotency state in a Redis distributed cache with distributed locks (Redlock or single-node Redis with Lua scripts) and a 24-hour TTL.
+2. **Asynchronous Decoupling**:
+   - Accept request, validate format via FluentValidation, persist payment intent, publish event to an append-only message bus (Azure Service Bus / Kafka / RabbitMQ), and return `202 Accepted` immediately.
+3. **Downstream Gateway Resilience**:
+   - Outbound HTTP calls managed via `IHttpClientFactory` with `PooledConnectionLifetime = 2 mins`.
+   - Resilience pipeline: Timeout per attempt (2s), 3 Retries with Exponential Backoff + Jitter on 503/504, and a Circuit Breaker configured to open if error rates exceed 30% over a 30s window.
+4. **Telemetry & Auditability**:
+   - End-to-end W3C `traceparent` propagation across HTTP, Redis, and message queues.
+   - Zero PII / PAN (credit card number) logging; strict compliance with PCI-DSS.
 
-- Make external contracts explicit: OpenAPI, status codes, ProblemDetails, versioning, pagination, and error semantics.
-- Prefer simple architectural boundaries with strong tests over elaborate layering with weak ownership.
-- Design for failure first: dependency timeout, invalid configuration, expired secret, partial outage, and noisy client.
-- Use structured logs and stable dimensions; avoid high-cardinality values unless necessary.
-- Validate configuration on startup for critical settings.
-- Keep middleware order intentional and reviewed.
-- Define health checks for orchestrators, not for human curiosity alone.
-- Use architecture decision records for choices that affect multiple teams or production operations.
+---
 
-## Examples
+# Scenario 2: Diagnosing a Silent Production CPU Spike
 
-### Senior Questions
+### The Prompt:
+*"Following a minor deployment, your ASP.NET Core API cluster experiences a CPU jump from 25% to 95%. Latency increases from 40ms to 6 seconds. No errors are logged. How do you isolate the root cause in production?"*
 
-1. Explain how you would design the request pipeline for a public ASP.NET Core API and justify the order.
-2. Where should validation live when a rule is both user-facing and domain-critical?
-3. How do you prevent outbound HTTP integrations from becoming the dominant source of latency?
-4. What telemetry would you require before approving launch?
-5. How would you evolve a public API contract for two years without breaking consumers?
-6. Which production failure would this design hide, and how would you expose it earlier?
+### Expected Principal Response:
+1. **Initial Telemetry Triage**:
+   - Check `dotnet-counters` for `cpu-usage`, `gen-0-gc-rate`, `alloc-rate`, `threadpool-queue-length`, and `lock-contention-count`.
+2. **Hypothesis Generation**:
+   - If GC allocation rate is high: Transient memory allocation storm in the hot path (e.g. string interpolation in logging or large LINQ queries).
+   - If thread-pool queue length is climbing: Thread-pool starvation caused by sync-over-async (`.Result`, `.Wait()`).
+   - If lock contention is high: Excessive synchronization around a shared Singleton resource.
+3. **Capture Diagnostic Artifacts**:
+   - Run `dotnet-dump collect` and `dotnet-trace collect` on a live affected pod.
+4. **Analysis**:
+   - In `dotnet-dump`, run `dumpheap -stat` and `threads` to inspect call stacks and top allocated object graphs.
+5. **Mitigation & Fix**:
+   - Shed non-critical traffic via rate limiters, hotfix the offending code path, and verify resolution using load tests in a staging environment.
 
-### Staff Questions
+---
 
-1. Explain how you would design the request pipeline for a public ASP.NET Core API and justify the order.
-2. Where should validation live when a rule is both user-facing and domain-critical?
-3. How do you prevent outbound HTTP integrations from becoming the dominant source of latency?
-4. What telemetry would you require before approving launch?
-5. How would you evolve a public API contract for two years without breaking consumers?
-6. Which production failure would this design hide, and how would you expose it earlier?
+# Scenario 3: Managing a Zero-Downtime Secret Rotation Incident
 
-### Principal Questions
+### The Prompt:
+*"Your organization requires automated password rotation for all production SQL databases every 30 days. How do you architect your ASP.NET Core application and infrastructure to support automated rotation with zero downtime and zero dropped customer requests?"*
 
-1. Explain how you would design the request pipeline for a public ASP.NET Core API and justify the order.
-2. Where should validation live when a rule is both user-facing and domain-critical?
-3. How do you prevent outbound HTTP integrations from becoming the dominant source of latency?
-4. What telemetry would you require before approving launch?
-5. How would you evolve a public API contract for two years without breaking consumers?
-6. Which production failure would this design hide, and how would you expose it earlier?
-
-### Architecture Review Questions
-
-1. Explain how you would design the request pipeline for a public ASP.NET Core API and justify the order.
-2. Where should validation live when a rule is both user-facing and domain-critical?
-3. How do you prevent outbound HTTP integrations from becoming the dominant source of latency?
-4. What telemetry would you require before approving launch?
-5. How would you evolve a public API contract for two years without breaking consumers?
-6. Which production failure would this design hide, and how would you expose it earlier?
-
-### System Design Questions
-
-1. Explain how you would design the request pipeline for a public ASP.NET Core API and justify the order.
-2. Where should validation live when a rule is both user-facing and domain-critical?
-3. How do you prevent outbound HTTP integrations from becoming the dominant source of latency?
-4. What telemetry would you require before approving launch?
-5. How would you evolve a public API contract for two years without breaking consumers?
-6. Which production failure would this design hide, and how would you expose it earlier?
-
-
-## Code Snippets
-
-```csharp
-public sealed class CreateOrderHandler
-{
-    private readonly IOrderRepository _orders;
-    private readonly TimeProvider _clock;
-
-    public CreateOrderHandler(IOrderRepository orders, TimeProvider clock)
-    {
-        _orders = orders;
-        _clock = clock;
-    }
-
-    public async Task<Result<OrderDto>> HandleAsync(CreateOrderCommand command, CancellationToken cancellationToken)
-    {
-        var order = Order.Create(command.CustomerId, command.Lines, _clock.GetUtcNow());
-        await _orders.SaveAsync(order, cancellationToken);
-        return Result.Success(OrderDto.From(order));
-    }
-}
-```
-
-## Architecture Notes
-
-The architecture should keep decisions visible. A principal engineer should be able to point to the code and answer: where does policy live, where do side effects happen, where does the public contract get shaped, and where will the team look during an incident?
-
-Recommended baseline:
-
-```text
-src/
-  Api/              HTTP, middleware, authentication, OpenAPI, controllers/endpoints
-  Application/      Use cases, ports, validation orchestration, DTOs
-  Domain/           Entities, value objects, invariants, domain services
-  Infrastructure/   EF Core, external HTTP clients, cloud adapters, logging adapters
-  Contracts/        Public request/response contracts if shared deliberately
-tests/
-  UnitTests/
-  IntegrationTests/
-  ArchitectureTests/
-```
-
-Architecture notes for this module:
-
-- Runtime behavior must be knowable from code and docs.
-- Security boundaries must be enforced close to the request boundary and repeated in domain rules where invariants require it.
-- Maintainability comes from fewer hidden dependencies and clear ownership.
-- Scalability comes from bounded work, async I/O, stateless request handling, and thoughtful dependency limits.
-- Cost control is an architecture concern when telemetry, retries, and cloud resources scale with traffic.
-
-## Principal Thinking
-
-A principal engineer asks different questions from an implementation owner:
-
-- Why this approach, and what evidence would change our mind?
-- Why not the simpler built-in default?
-- Why not a more sophisticated platform pattern?
-- When should we avoid this design?
-- What failure mode does this design make easier to detect?
-- What failure mode does it hide?
-- How would Microsoft implement this for a broad Azure customer base?
-- How would Amazon implement this for high-scale, operationally strict service ownership?
-
-Microsoft-style implementation usually emphasizes documented contracts, platform integration, secure defaults, compatibility, and tooling support. Amazon-style implementation usually emphasizes service ownership, operational metrics, blast-radius reduction, explicit runbooks, and continuous correction through incidents. A strong principal engineer can combine both instincts without cargo-culting either company.
-
-## Review Questions
-
-1. What production failure is most likely if this area is implemented casually?
-2. Which behavior is part of the public contract, and how is it tested?
-3. Which runtime cost grows with request volume?
-4. Which cloud platform feature changes the design assumption?
-5. How would you explain the trade-off to a CTO, an SRE, and a feature team?
-6. What would cause you to revisit this decision in six months?
-
-## References
-
-- [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/)
-- [ASP.NET Core fundamentals](https://learn.microsoft.com/aspnet/core/fundamentals/)
-- [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
-- [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/)
-- [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/)
-- Robert C. Martin, Clean Architecture
-- Mark Seemann, Dependency Injection Principles, Practices, and Patterns
-- Jeffrey Richter, CLR via C#
-- Andrew Lock, ASP.NET Core in Action
-- Martin Kleppmann, Designing Data-Intensive Applications
-- Martin Fowler architecture essays
-- Nick Chapsas, advanced .NET and ASP.NET Core content
-
-## Summary
-
-Interview Questions is part of the launch foundation for an enterprise-grade public API. The principal-level expectation is not memorizing framework APIs; it is understanding runtime behavior, making trade-offs explicit, proving the design with tests and telemetry, and leaving behind a system that other engineers can operate confidently.
+### Expected Principal Response:
+1. **Credential-Less Authentication (Preferred)**:
+   - Use **Azure Managed Identities / AWS IAM Roles** with Azure SQL Database / AWS Aurora. The application uses OAuth tokens refreshed automatically by the cloud identity subsystem, eliminating SQL passwords entirely.
+2. **Dynamic Key Vault Secret Rotation (If Passwords Required)**:
+   - Configure Azure Key Vault Configuration Provider with a periodic reload interval (e.g. 15 minutes).
+   - Bind database connection strings using `IOptionsMonitor<DatabaseOptions>`.
+   - Implement an interceptor or factory that detects authentication failures, invalidates the existing connection pool, retrieves the latest secret from `IOptionsMonitor.CurrentValue`, and re-establishes connections transparently.

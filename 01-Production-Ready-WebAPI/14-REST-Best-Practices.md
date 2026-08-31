@@ -1,245 +1,294 @@
-# REST Best Practices
+# 14 - Enterprise REST API Best Practices
 
-## Purpose
+> "REST is not about mapping database tables to URLs.
+>
+> REST is an architectural style designed to decouple clients from servers, enable caching, enforce idempotency, and provide long-term contract stability."
 
-Design resource-oriented APIs that remain stable under enterprise usage. This module assumes the reader already builds ASP.NET Core systems professionally. The goal is to sharpen engineering judgment: why a design exists, how it behaves under load, how it fails, and what evidence a principal engineer needs before launch.
+---
 
-> [!IMPORTANT]
-> The standard is not whether the API works on a developer machine. The standard is whether the design remains understandable, observable, secure, and operable when customers, incidents, and organizational pressure arrive.
+# Why Should a Principal Engineer Care?
 
-## Table of Contents
+Most web APIs are "RPC over HTTP in disguise":
 
-- [Purpose](#purpose)
-- [Theory](#theory)
-- [Deep Dive](#deep-dive)
-- [How It Works Internally](#how-it-works-internally)
-- [Production Usage](#production-usage)
-- [Common Mistakes](#common-mistakes)
-- [Trade-offs](#trade-offs)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-- [Code Snippets](#code-snippets)
-- [Architecture Notes](#architecture-notes)
-- [Principal Thinking](#principal-thinking)
-- [Review Questions](#review-questions)
-- [References](#references)
-- [Summary](#summary)
-
-## Theory
-
-The production-ready Web API foundation is a set of architectural constraints and runtime behaviors, not a checklist of NuGet packages. A principal engineer treats each framework feature as a design decision with blast radius across security, operability, performance, cost, and long-term maintainability.
-
-Core ideas in this module:
-
-- resource modeling
-- HTTP semantics
-- idempotency
-- pagination
-- compatibility
-
-A mature API design separates policy from detail. HTTP, persistence, messaging, cloud configuration, logging, and documentation are details that serve the business capability. They must be explicit, replaceable where necessary, and observable when they fail.
-
-## Deep Dive
-
-| Concern | Principal-level question |
-|---|---|
-| resource modeling | Runtime behavior, production failure mode, test evidence, and decision owner |
-| HTTP semantics | Runtime behavior, production failure mode, test evidence, and decision owner |
-| idempotency | Runtime behavior, production failure mode, test evidence, and decision owner |
-| pagination | Runtime behavior, production failure mode, test evidence, and decision owner |
-| compatibility | Runtime behavior, production failure mode, test evidence, and decision owner |
-
-Deep understanding requires following the request from socket acceptance through endpoint execution, dependency resolution, validation, exception translation, response writing, logging, metrics, and cloud platform feedback. The interesting engineering work happens at boundaries: when dependencies are slow, configuration is wrong, clients misuse the API, or the team needs to evolve the contract without breaking revenue-generating consumers.
-
-Performance impact is rarely isolated. A small allocation in middleware can multiply by every request. A missing timeout can exhaust threads. A verbose log property can create significant Application Insights or Log Analytics cost. A poorly scoped dependency can leak memory or corrupt tenant state. A vague error contract can turn every client integration into custom support work.
-
-## How It Works Internally
-
-ASP.NET Core builds a host, loads configuration providers in order, constructs an IServiceProvider, starts Kestrel, and executes requests through a composed middleware pipeline. Endpoint routing selects metadata and delegates. Model binding and validation prepare inputs. Application services execute use cases. Infrastructure adapters talk to databases and remote services. Result execution serializes responses and emits telemetry.
-
-Internal mechanics to reason about:
-
-- The dependency injection container resolves constructor graphs and enforces lifetimes only when scope validation is enabled.
-- Middleware executes in registration order on the way in and reverse order on the way out.
-- Async request handling uses the .NET thread pool; blocking work can starve unrelated requests.
-- Configuration values are layered; later providers override earlier providers.
-- Logging providers receive structured events, scopes, categories, and levels; downstream sinks decide storage and cost.
-- Exceptions are expensive control-flow mechanisms and should represent unexpected failure, not ordinary business decisions.
-
-```mermaid
-flowchart TD
-    Decision[Engineering Decision] --> Runtime[Runtime Behavior]
-    Runtime --> Ops[Operations]
-    Runtime --> Security[Security]
-    Runtime --> Cost[Cost]
-    Ops --> Feedback[Production Feedback]
-    Feedback --> Decision
+```
+POST /api/orders/createOrder
+POST /api/orders/updateOrderDetails
+POST /api/orders/deleteOrderById?id=5
 ```
 
-## Production Usage
+This anti-pattern abandons HTTP semantics, breaks intermediate reverse proxies and CDNs, ignores caching, and causes duplicate transaction bugs when networks fail.
 
-Use this capability as part of the launch foundation. Define the production contract, add tests around externally visible behavior, record the operational assumptions, and make the behavior visible through telemetry. Production usage means the team knows how the feature behaves during deploys, scale-out, dependency failure, secret rotation, and partial regional outage.
+As a Principal Engineer, you design APIs that:
+- Honor **HTTP safety and idempotency** contracts.
+- Prevent duplicate charges during network timeouts via **Idempotency Keys**.
+- Scale query performance with **Keyset (Cursor) Pagination** instead of slow $O(n)$ offset scans.
+- Prevent concurrent update overwrites using **ETags and Optimistic Concurrency (`If-Match`)**.
+- Provide consistent, intuitive resource modeling for enterprise integrations.
 
-Operational checklist:
+---
 
-- Define the owner and review cadence.
-- Document environment-specific behavior.
-- Add observable signals: log events, metrics, traces, health checks, or dashboards.
-- Add failure-mode tests where the blast radius is high.
-- Record rollout and rollback instructions.
-- Estimate cost impact before high-volume launch.
+# Production Story
 
-## Common Mistakes
+Cyber Monday.
 
-| Mistake | Why it hurts in production | Better approach |
-|---|---|---|
-| Treating framework defaults as architecture | Defaults optimize for broad usability, not your launch risk | Make explicit decisions and document them |
-| Mixing domain logic with transport code | Makes tests brittle and contract evolution risky | Keep use cases independent of HTTP details |
-| Ignoring cancellation and timeouts | Slow dependencies can consume threads and sockets | Propagate CancellationToken and bound every call |
-| Logging unbounded payloads | Increases cost and may leak sensitive data | Log identifiers, states, and safe dimensions |
-| Adding abstractions for style only | Creates indirection without resilience | Add abstractions where they protect policy or enable tests |
+09:45 AM.
 
-## Trade-offs
+A customer clicks "Submit Order" for a $1,200 laptop.
 
-| Decision pressure | Optimize for | Cost |
-|---|---|---|
-| Fast launch | Simpler architecture and fewer moving parts | Less isolation if requirements grow quickly |
-| Enterprise contract stability | Versioning, compatibility tests, documentation | More governance and slower breaking changes |
-| Deep observability | Faster incident response | Storage cost and data classification work |
-| Strong validation | Safer inputs and clearer client errors | More rules to maintain and test |
-| Cloud-native behavior | Better scaling and operations | Requires platform knowledge and automated verification |
+The cellular network drops for 3 seconds. The mobile app receives a network timeout error.
 
-```mermaid
-flowchart TD
-    A[Choose approach] --> B{Is it a stable public contract?}
-    B -->|Yes| C[Optimize for compatibility and explicit governance]
-    B -->|No| D[Optimize for simplicity and fast feedback]
-    C --> E[Record decision]
-    D --> E
-    E --> F[Verify with tests and telemetry]
+The mobile app's automated retry policy re-issues the request:
+
+```
+POST /api/orders
 ```
 
-## Best Practices
+The server receives both requests. Because `POST` is non-idempotent and the API did not implement idempotency keys:
+- The backend created two distinct orders (`ORD-101` and `ORD-102`).
+- The payment processor charged the customer's credit card twice ($2,400 total).
+- The inventory system reserved double stock.
 
-- Make external contracts explicit: OpenAPI, status codes, ProblemDetails, versioning, pagination, and error semantics.
-- Prefer simple architectural boundaries with strong tests over elaborate layering with weak ownership.
-- Design for failure first: dependency timeout, invalid configuration, expired secret, partial outage, and noisy client.
-- Use structured logs and stable dimensions; avoid high-cardinality values unless necessary.
-- Validate configuration on startup for critical settings.
-- Keep middleware order intentional and reviewed.
-- Define health checks for orchestrators, not for human curiosity alone.
-- Use architecture decision records for choices that affect multiple teams or production operations.
+Over the next 6 hours, 3,400 customers experienced duplicate charges, costing Nova Commerce $48,000 in payment dispute fees and immense reputational damage.
 
-## Examples
+The root cause? Treating HTTP `POST` as a naive remote procedure call without idempotency safeguards.
 
-### Architecture Decision Record Excerpt
+---
 
-| Field | Example |
-|---|---|
-| Decision | Use typed HttpClient for cohesive downstream APIs |
-| Status | Accepted |
-| Context | The API calls a billing service on the critical request path |
-| Consequence | Better testability and encapsulated resilience policy; more classes to own |
-| Review trigger | New downstream endpoint, latency SLO change, or incident involving billing |
+# The Principle: HTTP Semantics & Safety
 
-### Production Review Evidence
+A Principal Engineer designs endpoints around exact RFC specifications for HTTP methods:
 
-- Unit tests for domain and application rules.
-- Integration tests for HTTP contract and middleware behavior.
-- Load test showing latency, CPU, memory, and dependency behavior at target concurrency.
-- Dashboard covering request rate, error rate, duration, saturation, dependency calls, and log volume.
-- Runbook explaining rollback, configuration ownership, and incident triage.
+```
+┌─────────┬──────────────┬──────────────┬────────────────────────────────────────────────────────┐
+│ Method  │ Safe?        │ Idempotent?  │ Expected Purpose                                       │
+├─────────┼──────────────┼──────────────┼────────────────────────────────────────────────────────┤
+│ GET     │ YES (Read)   │ YES          │ Retrieve resource representation without side effects. │
+│ HEAD    │ YES (Read)   │ YES          │ Same as GET but returns headers only (no body).        │
+│ POST    │ NO (Mutate)  │ NO           │ Create subordinate resource or trigger an operation.   │
+│ PUT     │ NO (Mutate)  │ YES          │ Replace entire resource or create at exact URI.        │
+│ PATCH   │ NO (Mutate)  │ CONDITIONAL  │ Partial update to an existing resource.                │
+│ DELETE  │ NO (Mutate)  │ YES          │ Remove resource (repeated deletes return 204 or 404).   │
+└─────────┴──────────────┴──────────────┴────────────────────────────────────────────────────────┘
+```
 
+### Safety:
+A request is **Safe** if it does not alter server state. `GET /api/orders/123` must never mutate the database.
 
-## Code Snippets
+### Idempotency:
+A request is **Idempotent** if making $N > 1$ identical requests has the **exact same side effect** on the server as making 1 request.
 
-```csharp
-public sealed class CreateOrderHandler
+---
+
+# Idempotency Architecture for Non-Idempotent Operations
+
+How do you make `POST /api/orders` safe against client retries and network drops?
+
+### The Idempotency Key Pattern:
+
+```
+Client                              API Gateway / Kestrel               Redis / Database
+  │                                           │                                │
+  │─── POST /orders (Idempotency-Key: K1) ───►│                                │
+  │                                           │── Check Key Exists in Cache ──►│
+  │                                           │◄── Not Found (Proceed) ────────│
+  │                                           │                                │
+  │                                           │── Acquire Distributed Lock ───►│
+  │                                           │── Execute Order Creation ──────│
+  │                                           │── Cache Result (201, Order) ──►│
+  │◄── 201 Created (Order ORD-101) ───────────│                                │
+  │                                           │                                │
+  │ [Network Drop - Client Retries]           │                                │
+  │─── POST /orders (Idempotency-Key: K1) ───►│                                │
+  │                                           │── Check Key Exists in Cache ──►│
+  │                                           │◄── Found Cached Result (201) ──│
+  │◄── 201 Created (Order ORD-101 - Replayed)─│                                │
+  │    (Zero duplicate processing!)           │                                │
+```
+
+### Key Implementation Guidelines:
+1. Require the client to send a unique header: `Idempotency-Key: <UUID>`.
+2. Use Redis or a database table to store the idempotency key with a TTL (e.g. 24 hours).
+3. If the key is currently processing, return `409 Conflict` or wait on a distributed lock.
+4. If the key has already completed, return the **exact cached response payload and headers** without re-executing business logic.
+
+---
+
+# Pagination at Scale: Offset vs Keyset (Cursor)
+
+When querying collections (`GET /api/orders`):
+
+### 1. Offset Pagination (Anti-Pattern at Scale)
+```sql
+SELECT * FROM Orders 
+ORDER BY CreatedAt DESC 
+OFFSET 50000 ROWS FETCH NEXT 20 ROWS ONLY;
+```
+
+**Why it fails in production:**
+- **$O(n)$ Database Scan**: SQL Server must read and discard 50,000 index rows before returning the 20 requested rows.
+- **Page Drift / Missing Items**: If a new order is inserted while the user flips from Page 1 to Page 2, items shift, causing duplicates or skipped rows.
+
+### 2. Keyset / Cursor Pagination (Principal Standard)
+```sql
+SELECT TOP (20) * FROM Orders 
+WHERE (CreatedAt < @LastSeenCreatedAt) OR (CreatedAt = @LastSeenCreatedAt AND Id < @LastSeenId)
+ORDER BY CreatedAt DESC, Id DESC;
+```
+
+**Why it scales effortlessly:**
+- **$O(1)$ Index Seek**: SQL Server seeks directly to the index position using a B-Tree seek.
+- **Zero Page Drift**: Inserted items do not shift the cursor boundary.
+
+```json
 {
-    private readonly IOrderRepository _orders;
-    private readonly TimeProvider _clock;
-
-    public CreateOrderHandler(IOrderRepository orders, TimeProvider clock)
-    {
-        _orders = orders;
-        _clock = clock;
-    }
-
-    public async Task<Result<OrderDto>> HandleAsync(CreateOrderCommand command, CancellationToken cancellationToken)
-    {
-        var order = Order.Create(command.CustomerId, command.Lines, _clock.GetUtcNow());
-        await _orders.SaveAsync(order, cancellationToken);
-        return Result.Success(OrderDto.From(order));
-    }
+  "items": [ ... ],
+  "pageSize": 20,
+  "nextCursor": "MjAyNi0wOC0zMFQyMDoxNTowMFpfT1JELTk5Mg==",
+  "hasNextPage": true
 }
 ```
 
-## Architecture Notes
+---
 
-The architecture should keep decisions visible. A principal engineer should be able to point to the code and answer: where does policy live, where do side effects happen, where does the public contract get shaped, and where will the team look during an incident?
+# Concurrency Control with ETags & `If-Match`
 
-Recommended baseline:
+What happens when two administrators edit the same product price simultaneously?
 
-```text
-src/
-  Api/              HTTP, middleware, authentication, OpenAPI, controllers/endpoints
-  Application/      Use cases, ports, validation orchestration, DTOs
-  Domain/           Entities, value objects, invariants, domain services
-  Infrastructure/   EF Core, external HTTP clients, cloud adapters, logging adapters
-  Contracts/        Public request/response contracts if shared deliberately
-tests/
-  UnitTests/
-  IntegrationTests/
-  ArchitectureTests/
+```
+User A reads Product (Price = $100)
+User B reads Product (Price = $100)
+User A updates Price to $120 (Saved!)
+User B updates Price to $90  (OVERWRITES User A's change silently!)
 ```
 
-Architecture notes for this module:
+This is the **Lost Update Problem**.
 
-- Runtime behavior must be knowable from code and docs.
-- Security boundaries must be enforced close to the request boundary and repeated in domain rules where invariants require it.
-- Maintainability comes from fewer hidden dependencies and clear ownership.
-- Scalability comes from bounded work, async I/O, stateless request handling, and thoughtful dependency limits.
-- Cost control is an architecture concern when telemetry, retries, and cloud resources scale with traffic.
+### The Solution: HTTP Optimistic Concurrency Control
 
-## Principal Thinking
+```
+1. Client fetches resource:
+   GET /api/products/42
+   ◄── 200 OK
+   ETag: "v3-a8f9c1"
 
-A principal engineer asks different questions from an implementation owner:
+2. Client updates resource:
+   PUT /api/products/42
+   If-Match: "v3-a8f9c1"
+   Body: { "price": 120 }
 
-- Why this approach, and what evidence would change our mind?
-- Why not the simpler built-in default?
-- Why not a more sophisticated platform pattern?
-- When should we avoid this design?
-- What failure mode does this design make easier to detect?
-- What failure mode does it hide?
-- How would Microsoft implement this for a broad Azure customer base?
-- How would Amazon implement this for high-scale, operationally strict service ownership?
+3. If another user updated the product in between (Version changed to "v4-e2b3"):
+   ◄── 412 Precondition Failed
+   (Client is informed that their copy is stale and must refresh before retrying)
+```
 
-Microsoft-style implementation usually emphasizes documented contracts, platform integration, secure defaults, compatibility, and tooling support. Amazon-style implementation usually emphasizes service ownership, operational metrics, blast-radius reduction, explicit runbooks, and continuous correction through incidents. A strong principal engineer can combine both instincts without cargo-culting either company.
+In ASP.NET Core:
+```csharp
+[HttpPut("{id:guid}")]
+public async Task<IActionResult> UpdateProduct(
+    Guid id, 
+    [FromBody] UpdateProductRequest request, 
+    [FromHeader(Name = "If-Match")] string? ifMatch)
+{
+    var product = await _repository.GetByIdAsync(id);
+    if (product == null) return NotFound();
 
-## Review Questions
+    var currentETag = $"\"{product.RowVersion}\"";
+    if (!string.IsNullOrEmpty(ifMatch) && ifMatch != currentETag)
+    {
+        return StatusCode(StatusCodes.Status412PreconditionFailed, 
+            "Resource has been modified by another process. Please refresh.");
+    }
 
-1. What production failure is most likely if this area is implemented casually?
-2. Which behavior is part of the public contract, and how is it tested?
-3. Which runtime cost grows with request volume?
-4. Which cloud platform feature changes the design assumption?
-5. How would you explain the trade-off to a CTO, an SRE, and a feature team?
-6. What would cause you to revisit this decision in six months?
+    product.UpdatePrice(request.Price);
+    await _repository.SaveChangesAsync();
 
-## References
+    Response.Headers.ETag = $"\"{product.RowVersion}\"";
+    return Ok(product);
+}
+```
 
-- [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/)
-- [ASP.NET Core fundamentals](https://learn.microsoft.com/aspnet/core/fundamentals/)
+---
+
+# Common Mistakes
+
+❌ **Using Verbs in URLs**
+```
+POST /api/getProductsById
+POST /api/deleteOrder
+```
+✅ **Use Nouns for Resources and HTTP Verbs for Actions**
+```
+GET /api/products/{id}
+DELETE /api/orders/{id}
+```
+
+❌ **Returning 200 OK for Resource Creation**
+```csharp
+[HttpPost]
+public IActionResult Create() => Ok(new { id = 123 }); // Fails HTTP spec
+```
+✅ **Return 201 Created with Location Header**
+```csharp
+[HttpPost]
+public IActionResult Create([FromBody] CreateOrderDto dto)
+{
+    var order = _service.Create(dto);
+    return CreatedAtAction(nameof(GetById), new { id = order.Id }, order);
+}
+```
+
+❌ **Returning 200 OK for Deleted Resources**
+```csharp
+[HttpDelete("{id}")]
+public IActionResult Delete(Guid id) => NoContent(); // Returns 204 No Content
+```
+
+❌ **Unbounded Query Endpoints**
+```csharp
+[HttpGet]
+public async Task<IActionResult> GetAll() => Ok(await _db.Orders.ToListAsync()); // OUT OF MEMORY
+```
+✅ **Always Enforce Hard Limits on Page Size (e.g. `Math.Min(pageSize, 100)`).**
+
+---
+
+# Architect's Decision
+
+### Scenario
+Nova Commerce provides a public merchant API for 5,000 external retail vendors to manage catalog items, inventory, and orders.
+
+### Standards Adopted:
+1. **Resource Modeling**: Plural lowercase nouns (`/api/v1/orders`, `/api/v1/catalog-items`).
+2. **Mutations**: Financial and state-altering `POST` endpoints require an `Idempotency-Key` header stored in Redis with a 24-hour TTL.
+3. **Pagination**: Default to Keyset Pagination for all high-volume tables (>100k rows).
+4. **Concurrency**: All update operations (`PUT` / `PATCH`) enforce `If-Match` headers with entity `RowVersion` ETags to prevent lost updates.
+5. **Errors**: Standardized RFC 7807 ProblemDetails across all responses.
+
+---
+
+# Principal Thinking
+
+| Level | Perspective | Focus |
+|---|---|---|
+| **Junior** | Routes | "I made an endpoint that returns JSON." |
+| **Senior** | REST Conventions | "I used GET, POST, PUT, DELETE with appropriate status codes." |
+| **Principal** | Protocol & Distributed Resilience | "How does our API leverage HTTP caching, ensure idempotency across network retries, prevent database table scans via keyset pagination, and eliminate lost updates with optimistic concurrency?" |
+
+---
+
+# Learning Resources & References
+
+### Authoritative Documentation
 - [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
-- [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/)
-- [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/)
-- Robert C. Martin, Clean Architecture
-- Mark Seemann, Dependency Injection Principles, Practices, and Patterns
-- Jeffrey Richter, CLR via C#
-- Andrew Lock, ASP.NET Core in Action
-- Martin Kleppmann, Designing Data-Intensive Applications
-- Martin Fowler architecture essays
-- Nick Chapsas, advanced .NET and ASP.NET Core content
+- [RFC 9110: HTTP Semantics (Replaces RFC 7231)](https://datatracker.ietf.org/doc/html/rfc9110)
+- [IETF Draft: The Idempotency-Key HTTP Header Field](https://datatracker.ietf.org/doc/html/draft-ietf-httpapi-idempotency-key-header)
 
-## Summary
+---
 
-REST Best Practices is part of the launch foundation for an enterprise-grade public API. The principal-level expectation is not memorizing framework APIs; it is understanding runtime behavior, making trade-offs explicit, proving the design with tests and telemetry, and leaving behind a system that other engineers can operate confidently.
+# Self Assessment
+
+1. Explain the technical difference between a **Safe** HTTP method and an **Idempotent** HTTP method.
+2. Why does offset pagination (`OFFSET / FETCH`) degrade exponentially on tables with millions of rows?
+3. How does the `Idempotency-Key` header prevent double-charging in payment processing systems?
+4. Walk through the step-by-step handshake of `ETag` and `If-Match` during an optimistic concurrency update.
+5. What HTTP status code should be returned when: (a) a resource is created, (b) an asynchronous job is accepted for background processing, (c) a delete succeeds with no content?

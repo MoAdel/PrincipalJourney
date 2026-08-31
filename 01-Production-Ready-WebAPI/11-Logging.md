@@ -1,235 +1,439 @@
-# Logging
+# 11 - Structured Logging & Telemetry
 
-## Purpose
+> "Logs are not text for developers to read in a console.
+>
+> Logs are structured telemetry emitted by a distributed system to prove its state, debug incidents, and defend its reliability."
 
-Design logs as a production diagnostic interface, not console noise. This module assumes the reader already builds ASP.NET Core systems professionally. The goal is to sharpen engineering judgment: why a design exists, how it behaves under load, how it fails, and what evidence a principal engineer needs before launch.
+---
 
-> [!IMPORTANT]
-> The standard is not whether the API works on a developer machine. The standard is whether the design remains understandable, observable, secure, and operable when customers, incidents, and organizational pressure arrive.
+# Why Should a Principal Engineer Care?
 
-## Table of Contents
-
-- [Purpose](#purpose)
-- [Theory](#theory)
-- [Deep Dive](#deep-dive)
-- [How It Works Internally](#how-it-works-internally)
-- [Production Usage](#production-usage)
-- [Common Mistakes](#common-mistakes)
-- [Trade-offs](#trade-offs)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-- [Code Snippets](#code-snippets)
-- [Architecture Notes](#architecture-notes)
-- [Principal Thinking](#principal-thinking)
-- [Review Questions](#review-questions)
-- [References](#references)
-- [Summary](#summary)
-
-## Theory
-
-The production-ready Web API foundation is a set of architectural constraints and runtime behaviors, not a checklist of NuGet packages. A principal engineer treats each framework feature as a design decision with blast radius across security, operability, performance, cost, and long-term maintainability.
-
-Core ideas in this module:
-
-- structured logging
-- scopes
-- correlation
-- sampling
-- cost control
-
-A mature API design separates policy from detail. HTTP, persistence, messaging, cloud configuration, logging, and documentation are details that serve the business capability. They must be explicit, replaceable where necessary, and observable when they fail.
-
-## Deep Dive
-
-| Concern | Principal-level question |
-|---|---|
-| structured logging | Runtime behavior, production failure mode, test evidence, and decision owner |
-| scopes | Runtime behavior, production failure mode, test evidence, and decision owner |
-| correlation | Runtime behavior, production failure mode, test evidence, and decision owner |
-| sampling | Runtime behavior, production failure mode, test evidence, and decision owner |
-| cost control | Runtime behavior, production failure mode, test evidence, and decision owner |
-
-Deep understanding requires following the request from socket acceptance through endpoint execution, dependency resolution, validation, exception translation, response writing, logging, metrics, and cloud platform feedback. The interesting engineering work happens at boundaries: when dependencies are slow, configuration is wrong, clients misuse the API, or the team needs to evolve the contract without breaking revenue-generating consumers.
-
-Performance impact is rarely isolated. A small allocation in middleware can multiply by every request. A missing timeout can exhaust threads. A verbose log property can create significant Application Insights or Log Analytics cost. A poorly scoped dependency can leak memory or corrupt tenant state. A vague error contract can turn every client integration into custom support work.
-
-## How It Works Internally
-
-ASP.NET Core builds a host, loads configuration providers in order, constructs an IServiceProvider, starts Kestrel, and executes requests through a composed middleware pipeline. Endpoint routing selects metadata and delegates. Model binding and validation prepare inputs. Application services execute use cases. Infrastructure adapters talk to databases and remote services. Result execution serializes responses and emits telemetry.
-
-Internal mechanics to reason about:
-
-- The dependency injection container resolves constructor graphs and enforces lifetimes only when scope validation is enabled.
-- Middleware executes in registration order on the way in and reverse order on the way out.
-- Async request handling uses the .NET thread pool; blocking work can starve unrelated requests.
-- Configuration values are layered; later providers override earlier providers.
-- Logging providers receive structured events, scopes, categories, and levels; downstream sinks decide storage and cost.
-- Exceptions are expensive control-flow mechanisms and should represent unexpected failure, not ordinary business decisions.
-
-```mermaid
-flowchart TD
-    Decision[Engineering Decision] --> Runtime[Runtime Behavior]
-    Runtime --> Ops[Operations]
-    Runtime --> Security[Security]
-    Runtime --> Cost[Cost]
-    Ops --> Feedback[Production Feedback]
-    Feedback --> Decision
-```
-
-## Production Usage
-
-Use this capability as part of the launch foundation. Define the production contract, add tests around externally visible behavior, record the operational assumptions, and make the behavior visible through telemetry. Production usage means the team knows how the feature behaves during deploys, scale-out, dependency failure, secret rotation, and partial regional outage.
-
-Operational checklist:
-
-- Define the owner and review cadence.
-- Document environment-specific behavior.
-- Add observable signals: log events, metrics, traces, health checks, or dashboards.
-- Add failure-mode tests where the blast radius is high.
-- Record rollout and rollback instructions.
-- Estimate cost impact before high-volume launch.
-
-## Common Mistakes
-
-| Mistake | Why it hurts in production | Better approach |
-|---|---|---|
-| Treating framework defaults as architecture | Defaults optimize for broad usability, not your launch risk | Make explicit decisions and document them |
-| Mixing domain logic with transport code | Makes tests brittle and contract evolution risky | Keep use cases independent of HTTP details |
-| Ignoring cancellation and timeouts | Slow dependencies can consume threads and sockets | Propagate CancellationToken and bound every call |
-| Logging unbounded payloads | Increases cost and may leak sensitive data | Log identifiers, states, and safe dimensions |
-| Adding abstractions for style only | Creates indirection without resilience | Add abstractions where they protect policy or enable tests |
-
-## Trade-offs
-
-| Decision pressure | Optimize for | Cost |
-|---|---|---|
-| Fast launch | Simpler architecture and fewer moving parts | Less isolation if requirements grow quickly |
-| Enterprise contract stability | Versioning, compatibility tests, documentation | More governance and slower breaking changes |
-| Deep observability | Faster incident response | Storage cost and data classification work |
-| Strong validation | Safer inputs and clearer client errors | More rules to maintain and test |
-| Cloud-native behavior | Better scaling and operations | Requires platform knowledge and automated verification |
-
-```mermaid
-flowchart TD
-    A[Choose approach] --> B{Is it a stable public contract?}
-    B -->|Yes| C[Optimize for compatibility and explicit governance]
-    B -->|No| D[Optimize for simplicity and fast feedback]
-    C --> E[Record decision]
-    D --> E
-    E --> F[Verify with tests and telemetry]
-```
-
-## Best Practices
-
-- Make external contracts explicit: OpenAPI, status codes, ProblemDetails, versioning, pagination, and error semantics.
-- Prefer simple architectural boundaries with strong tests over elaborate layering with weak ownership.
-- Design for failure first: dependency timeout, invalid configuration, expired secret, partial outage, and noisy client.
-- Use structured logs and stable dimensions; avoid high-cardinality values unless necessary.
-- Validate configuration on startup for critical settings.
-- Keep middleware order intentional and reviewed.
-- Define health checks for orchestrators, not for human curiosity alone.
-- Use architecture decision records for choices that affect multiple teams or production operations.
-
-## Examples
-
-### Architecture Decision Record Excerpt
-
-| Field | Example |
-|---|---|
-| Decision | Use typed HttpClient for cohesive downstream APIs |
-| Status | Accepted |
-| Context | The API calls a billing service on the critical request path |
-| Consequence | Better testability and encapsulated resilience policy; more classes to own |
-| Review trigger | New downstream endpoint, latency SLO change, or incident involving billing |
-
-### Production Review Evidence
-
-- Unit tests for domain and application rules.
-- Integration tests for HTTP contract and middleware behavior.
-- Load test showing latency, CPU, memory, and dependency behavior at target concurrency.
-- Dashboard covering request rate, error rate, duration, saturation, dependency calls, and log volume.
-- Runbook explaining rollback, configuration ownership, and incident triage.
-
-
-## Code Snippets
+Every developer knows how to write:
 
 ```csharp
-using (_logger.BeginScope(new Dictionary<string, object>
+_logger.LogInformation($"Order {order.Id} created for customer {order.CustomerId}");
+```
+
+This single line of code contains **three critical engineering defects**:
+
+1. It destroys structured data by flattening semantic properties into unstructured text.
+2. It allocates strings and boxes value types on every single request in the hot path.
+3. It leaks customer identifiers and potential PII into downstream unencrypted log sinks.
+
+As a Principal Engineer, you do not view logging as an afterthought or a debugging tool.
+
+You view logging as:
+- **A distributed diagnostic interface** across thousands of concurrent requests.
+- **A major cost center** in cloud infrastructure (Log Analytics, Datadog, Elastic).
+- **A critical performance hot path** that can induce GC pressure and thread pool starvation.
+- **A security and compliance boundary** governing sensitive data (GDPR, HIPAA, PCI-DSS).
+
+---
+
+# Production Story
+
+Black Friday.
+
+11:15 AM.
+
+Nova Commerce traffic surges to 45,000 requests per second.
+
+The cluster CPU spikes from 35% to 98%. Response times degrade from 45ms to 8.2 seconds.
+
+Kubernetes begins restarting pods due to failed health check probes.
+
+```
+Fatal: OutOfMemoryException / ThreadPool Starvation
+```
+
+The infrastructure team scales the cluster from 20 nodes to 80 nodes. The CPU remains pinned at 99%.
+
+### The Investigation
+
+Memory dumps revealed that 65% of all GC Gen 0 allocations were transient strings generated by:
+
+```csharp
+_logger.LogInformation($"Processing payment {payment.Id} for amount {payment.Amount} with card {payment.CardNumber}");
+```
+
+Every request allocated 4 distinct string objects, boxed the decimal amount, executed reflection inside the default console formatter, and blocked thread pool worker threads on synchronous console I/O.
+
+To make matters worse, at the end of the month, the cloud bill arrived:
+
+> **Azure Log Analytics ingestion cost: $74,200 for 48 hours of unthrottled Debug logs.**
+
+One unstructured, unthrottled logging line caused a service outage, a compliance violation (PCI-DSS credit card leak), and tens of thousands of dollars in wasted cloud spend.
+
+---
+
+# The Real Problem
+
+Logging in enterprise applications suffers from five distinct failure modes:
+
+```
+1. Unstructured Strings    → Cannot query, filter, or aggregate in log engines
+2. Memory Allocation       → String concatenation and object boxing destroy GC performance
+3. Synchronous Blocking    → Disk/Console I/O starves Kestrel thread pool workers
+4. Missing Correlation     → Impossible to trace a request across distributed microservices
+5. Cost Explosion          → Verbose log levels and unbounded cardinality overload storage
+```
+
+Understanding how the .NET logging ecosystem works enables you to build a zero-allocation, high-throughput, structured observability pipeline.
+
+---
+
+# The Principle
+
+Treat log entries as **strongly typed events with semantic properties**, not formatted strings.
+
+### Unstructured (Anti-Pattern)
+```csharp
+// Fails: Log sink sees a raw string "Order 105 created for customer 8821"
+_logger.LogInformation($"Order {order.Id} created for customer {order.CustomerId}");
+```
+
+### Structured (Message Template)
+```csharp
+// Correct: Log sink indexes OrderId=105 and CustomerId=8821 as independent queryable columns
+_logger.LogInformation("Order {OrderId} created for customer {CustomerId}", order.Id, order.CustomerId);
+```
+
+### High-Performance Source Generated (Principal Standard)
+```csharp
+// Zero-allocation, pre-compiled delegate, compile-time verified template
+LogMessages.OrderCreated(_logger, order.Id, order.CustomerId);
+```
+
+---
+
+# The Logging Architecture
+
+ASP.NET Core separates logging into distinct layers:
+
+```
+Application Code (ILogger<T>)
+       │
+       ▼
+ILoggerFactory
+       │
+       ▼
+ILoggerProvider (Console, OpenTelemetry, Serilog, Application Insights)
+       │
+       ▼
+ILogger Implementation (Provider-specific)
+       │
+       ▼
+Downstream Sink / Collector (Elasticsearch, Seq, Datadog, OTLP Collector)
+```
+
+### 1. ILogger
+The interface used by application code to emit log messages.
+
+### 2. ILoggerFactory
+The factory responsible for creating instances of `ILogger` and managing providers.
+
+### 3. ILoggerProvider
+The component responsible for creating sink-specific logger instances (e.g., ConsoleLogger, OTLPLogger).
+
+### 4. Logger Category
+The category name assigned to an `ILogger` (conventionally the full type name `NovaCommerce.Application.Orders.OrderService`). Used for granular filtering rules in configuration.
+
+---
+
+# Message Templates & Semantic Properties
+
+Message templates define named placeholders within the message string:
+
+```csharp
+_logger.LogInformation("Payment {PaymentId} processed in {ElapsedMs}ms with status {PaymentStatus}",
+    payment.Id, stopwatch.ElapsedMilliseconds, payment.Status);
+```
+
+### How Sinks Process This:
+In storage (e.g., Elasticsearch, Seq, Azure Log Analytics), this creates a rich JSON payload:
+
+```json
 {
-    ["CorrelationId"] = correlationId,
-    ["TenantId"] = tenantId
-}))
-{
-    _logger.LogInformation("Creating order {OrderId} for customer {CustomerId}", orderId, customerId);
+  "@timestamp": "2026-08-30T20:15:00.123Z",
+  "level": "Information",
+  "message": "Payment 98421 processed in 42ms with status Succeeded",
+  "category": "NovaCommerce.Infrastructure.Payments.PaymentProcessor",
+  "properties": {
+    "PaymentId": "98421",
+    "ElapsedMs": 42,
+    "PaymentStatus": "Succeeded",
+    "Environment": "Production",
+    "Application": "NovaCommerce.API"
+  }
 }
 ```
 
-## Architecture Notes
+Now operators can execute instant queries:
 
-The architecture should keep decisions visible. A principal engineer should be able to point to the code and answer: where does policy live, where do side effects happen, where does the public contract get shaped, and where will the team look during an incident?
-
-Recommended baseline:
-
-```text
-src/
-  Api/              HTTP, middleware, authentication, OpenAPI, controllers/endpoints
-  Application/      Use cases, ports, validation orchestration, DTOs
-  Domain/           Entities, value objects, invariants, domain services
-  Infrastructure/   EF Core, external HTTP clients, cloud adapters, logging adapters
-  Contracts/        Public request/response contracts if shared deliberately
-tests/
-  UnitTests/
-  IntegrationTests/
-  ArchitectureTests/
+```sql
+SELECT AVG(ElapsedMs) WHERE PaymentStatus = 'Succeeded' AND ElapsedMs > 500
 ```
 
-Architecture notes for this module:
+This is impossible with string-interpolated logs.
 
-- Runtime behavior must be knowable from code and docs.
-- Security boundaries must be enforced close to the request boundary and repeated in domain rules where invariants require it.
-- Maintainability comes from fewer hidden dependencies and clear ownership.
-- Scalability comes from bounded work, async I/O, stateless request handling, and thoughtful dependency limits.
-- Cost control is an architecture concern when telemetry, retries, and cloud resources scale with traffic.
+---
 
-## Principal Thinking
+# Scopes (`BeginScope`)
 
-A principal engineer asks different questions from an implementation owner:
+What if every log message in a request needs `CorrelationId`, `TenantId`, and `UserId`?
 
-- Why this approach, and what evidence would change our mind?
-- Why not the simpler built-in default?
-- Why not a more sophisticated platform pattern?
-- When should we avoid this design?
-- What failure mode does this design make easier to detect?
-- What failure mode does it hide?
-- How would Microsoft implement this for a broad Azure customer base?
-- How would Amazon implement this for high-scale, operationally strict service ownership?
+Adding them to every single `_logger.LogInformation(...)` call creates massive duplication and clutter.
 
-Microsoft-style implementation usually emphasizes documented contracts, platform integration, secure defaults, compatibility, and tooling support. Amazon-style implementation usually emphasizes service ownership, operational metrics, blast-radius reduction, explicit runbooks, and continuous correction through incidents. A strong principal engineer can combine both instincts without cargo-culting either company.
+Instead, use **Logging Scopes**:
 
-## Review Questions
+```csharp
+public async Task InvokeAsync(HttpContext context, RequestDelegate next)
+{
+    var correlationId = context.Request.Headers["X-Correlation-Id"].FirstOrDefault() 
+                        ?? Guid.NewGuid().ToString("N");
 
-1. What production failure is most likely if this area is implemented casually?
-2. Which behavior is part of the public contract, and how is it tested?
-3. Which runtime cost grows with request volume?
-4. Which cloud platform feature changes the design assumption?
-5. How would you explain the trade-off to a CTO, an SRE, and a feature team?
-6. What would cause you to revisit this decision in six months?
+    using (_logger.BeginScope(new Dictionary<string, object>
+    {
+        ["CorrelationId"] = correlationId,
+        ["TraceId"] = context.TraceIdentifier,
+        ["ClientIp"] = context.Connection.RemoteIpAddress?.ToString() ?? "unknown"
+    }))
+    {
+        await next(context);
+    }
+}
+```
 
-## References
+Every log emitted within this `using` block—whether by controllers, services, repositories, or EF Core—automatically inherits all scope properties in its structured payload.
 
-- [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/)
-- [ASP.NET Core fundamentals](https://learn.microsoft.com/aspnet/core/fundamentals/)
-- [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
-- [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/)
-- [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/)
-- Robert C. Martin, Clean Architecture
-- Mark Seemann, Dependency Injection Principles, Practices, and Patterns
-- Jeffrey Richter, CLR via C#
-- Andrew Lock, ASP.NET Core in Action
-- Martin Kleppmann, Designing Data-Intensive Applications
-- Martin Fowler architecture essays
-- Nick Chapsas, advanced .NET and ASP.NET Core content
+```
+BeginScope (CorrelationId = "abc-123")
+  ├── Controller: "Received HTTP POST /orders"   [CorrelationId = "abc-123"]
+  ├── Service:    "Validating customer balance" [CorrelationId = "abc-123"]
+  ├── Repository: "Executing SQL Query"         [CorrelationId = "abc-123"]
+  └── Controller: "Order 901 Created (201)"     [CorrelationId = "abc-123"]
+```
 
-## Summary
+---
 
-Logging is part of the launch foundation for an enterprise-grade public API. The principal-level expectation is not memorizing framework APIs; it is understanding runtime behavior, making trade-offs explicit, proving the design with tests and telemetry, and leaving behind a system that other engineers can operate confidently.
+# Log Levels & Production Taxonomy
+
+A Principal Engineer enforces a strict taxonomy for log levels across all teams:
+
+| Level | Purpose | Production Enabled? | Action Required |
+|---|---|---|---|
+| **Trace** | Deep diagnostic details, payload dumps, byte arrays | ❌ Never in Production | Diagnostic only |
+| **Debug** | Internal execution flow, state transitions | ❌ Off by default (on-demand) | Development troubleshooting |
+| **Information** | Business events, state changes, lifecycle milestones | ✅ Yes (sampled / essential) | System awareness |
+| **Warning** | Unexpected condition handled safely (retries, degraded state) | ✅ Yes | Proactive investigation |
+| **Error** | Operation failed, current request aborted, requires action | ✅ Yes | Team alert / pager |
+| **Critical** | System-wide failure, data loss risk, application crash | ✅ Yes | Immediate emergency incident |
+
+### Configuration Example
+```json
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning",
+      "Microsoft.EntityFrameworkCore": "Warning",
+      "Microsoft.Hosting.Lifetime": "Information",
+      "NovaCommerce": "Information"
+    }
+  }
+}
+```
+
+---
+
+# High-Performance Zero-Allocation Logging
+
+Why does standard logging allocate memory?
+
+```csharp
+_logger.LogInformation("Processing order {OrderId} with items {ItemCount}", orderId, itemCount);
+```
+
+When this line executes:
+1. `orderId` (`int` or `Guid`) is boxed to `object`.
+2. `itemCount` (`int`) is boxed to `object`.
+3. An array `object[]` is allocated to pass the parameters.
+4. The template parser parses the format string at runtime.
+
+Under 20,000 requests/sec, this creates megabytes of heap garbage per second.
+
+### Solution: Compile-Time Source Generator (`[LoggerMessage]`)
+
+Introduced in .NET 6+, the `[LoggerMessage]` attribute generates high-performance, strongly typed, zero-allocation logging methods at compile time:
+
+```csharp
+public static partial class OrderLogMessages
+{
+    [LoggerMessage(
+        EventId = 1001,
+        Level = LogLevel.Information,
+        Message = "Processing order {OrderId} with {ItemCount} items for Customer {CustomerId}")]
+    public static partial void LogProcessingOrder(
+        ILogger logger, 
+        Guid orderId, 
+        int itemCount, 
+        Guid customerId);
+
+    [LoggerMessage(
+        EventId = 1002,
+        Level = LogLevel.Error,
+        Message = "Payment failed for Order {OrderId} due to {Reason}")]
+    public static partial void LogPaymentFailed(
+        ILogger logger, 
+        Guid orderId, 
+        string reason, 
+        Exception exception);
+}
+```
+
+### Usage:
+```csharp
+OrderLogMessages.LogProcessingOrder(_logger, order.Id, order.Items.Count, order.CustomerId);
+```
+
+### Why This Is Superior:
+- **Zero Heap Allocations**: No boxing, no `object[]` allocation.
+- **Pre-computed Template Parsing**: Parsed at compile time.
+- **Built-in `IsEnabled` Check**: Skips all execution immediately if the log level is disabled.
+- **Unique Event IDs**: Simplifies searching and alerting in log analyzers.
+
+---
+
+# Sensitive Data & PII Redaction
+
+Logging sensitive data is a serious security vulnerability.
+
+```csharp
+// SECURITY VULNERABILITY: Leaking PII and Card Numbers
+_logger.LogInformation("User {Email} completed checkout with card {CardNumber}", user.Email, cardNumber);
+```
+
+### Protection Strategies:
+1. **Never pass sensitive objects directly to loggers.**
+2. **Use Data Masking & Redaction**:
+   - Hash or mask emails: `j***@example.com`
+   - Mask credit cards: `****-****-****-1234`
+3. **Use .NET 8+ `Microsoft.Extensions.Compliance.Redaction`**:
+
+```csharp
+public sealed class OrderRedactionData
+{
+    [PersonalData]
+    public string CustomerEmail { get; set; }
+
+    public string OrderId { get; set; }
+}
+```
+
+---
+
+# Common Mistakes
+
+❌ **String Interpolation in Log Calls**
+```csharp
+_logger.LogInformation($"Customer {id} logged in"); // Destroys indexing, forces allocation
+```
+✅ **Use Message Templates or Source Generators**
+```csharp
+_logger.LogInformation("Customer {CustomerId} logged in", id);
+```
+
+❌ **Logging in Tight Loops**
+```csharp
+foreach(var item in order.Items)
+{
+    _logger.LogInformation("Processed item {ItemId}", item.Id); // 100 items = 100 log entries
+}
+```
+✅ **Log Aggregated Outcomes**
+```csharp
+_logger.LogInformation("Processed order {OrderId} containing {ItemCount} items", order.Id, order.Items.Count);
+```
+
+❌ **Swallowing Exceptions Without Logging or Double-Logging**
+```csharp
+try { ... }
+catch (Exception ex)
+{
+    _logger.LogError(ex, "Failed");
+    throw; // BAD: The upstream global exception handler will log this a second time!
+}
+```
+✅ **Log at the Boundary or Throw Without Logging**
+```csharp
+// Either handle and log at the boundary, OR throw custom domain exception and let Global Exception Middleware log it once.
+```
+
+❌ **Synchronous File or Console Sinks in High-Throughput Services**
+```csharp
+// Direct console writes block thread pool threads on stdout locks.
+```
+✅ **Use Asynchronous Batching Sinks (e.g., Serilog PeriodicBatchingSink, OpenTelemetry OTLP background export).**
+
+---
+
+# Architect's Decision
+
+### Scenario
+Nova Commerce needs a unified logging and observability strategy across 12 microservices and 4 background worker services handling 50,000 req/sec.
+
+### Options Evaluated:
+
+1. **Option A: Direct Console Logging to Stdout (Kubernetes log driver scraping)**
+   - *Pros*: Simple, zero code dependencies.
+   - *Cons*: Formatting overhead, heavy stdout contention, difficult to correlate without sidecar.
+
+2. **Option B: Serilog with Direct Sinks to Elasticsearch / App Insights**
+   - *Pros*: Rich enrichers, mature ecosystem.
+   - *Cons*: Tight coupling to specific vendor sinks; synchronous network failures can impact app latency if not carefully configured with Async wrappers.
+
+3. **Option C: Standard `Microsoft.Extensions.Logging` + OpenTelemetry OTLP Exporter (Recommended)**
+   - *Pros*: Open standard (W3C TraceContext, OpenTelemetry OTLP), vendor-neutral, zero-allocation source generators, asynchronous non-blocking background queue, seamless correlation between Logs, Traces, and Metrics.
+   - *Cons*: Requires an OpenTelemetry Collector daemon or OTLP-compatible backend.
+
+### Decision
+Adopt **`Microsoft.Extensions.Logging` with Compile-Time Source Generators (`[LoggerMessage]`) and OpenTelemetry OTLP export**.
+
+### When to Revisit
+If a specific legacy log sink requires proprietary enrichers not supported by OpenTelemetry OTLP standard.
+
+---
+
+# Principal Thinking
+
+| Level | Focus | Primary Question |
+|---|---|---|
+| **Junior** | Syntax | "How do I write a message to the console?" |
+| **Senior** | Structure | "Should I use Serilog or Microsoft.Extensions.Logging?" |
+| **Principal** | System Telemetry | "What is the allocation footprint, indexing cost, correlation model, and compliance boundary of our telemetry stream under peak load?" |
+
+---
+
+# Learning Resources & References
+
+### Authoritative Documentation
+- [Logging in .NET and ASP.NET Core — Microsoft Learn](https://learn.microsoft.com/en-us/aspnet/core/fundamentals/logging/)
+- [High-performance logging with LoggerMessage source generators](https://learn.microsoft.com/en-us/dotnet/core/diagnostics/logger-message-generator)
+- [OpenTelemetry .NET Documentation](https://opentelemetry.io/docs/languages/net/)
+- [Message Template Specification](https://messagetemplates.org/)
+
+### Source Code Deep Dive
+- [.NET Runtime Logging Repository (`Microsoft.Extensions.Logging`)](https://github.com/dotnet/runtime/tree/main/src/libraries/Microsoft.Extensions.Logging)
+
+---
+
+# Self Assessment
+
+You have mastered this chapter if you can explain:
+
+1. Why `$"User {id}"` causes memory allocations and destroys log searchability.
+2. How `BeginScope` propagates ambient identifiers without modifying every method signature.
+3. How `[LoggerMessage]` source generator achieves zero heap allocations.
+4. The exact difference between `ILoggerFactory`, `ILoggerProvider`, and `ILogger`.
+5. Why synchronous logging sinks can cause thread pool starvation under load.
+6. How to structure log filtering to keep cloud log ingestion costs under control.

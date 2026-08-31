@@ -1,238 +1,317 @@
-# HTTP Clients
+# 15 - Resilient Outbound HTTP & IHttpClientFactory
 
-## Purpose
+> "An external HTTP call is not an in-memory method invocation.
+>
+> It is an unreliable, high-latency network traversal crossing process boundaries, firewalls, DNS resolvers, and external infrastructure."
 
-Build resilient outbound HTTP integrations with IHttpClientFactory. This module assumes the reader already builds ASP.NET Core systems professionally. The goal is to sharpen engineering judgment: why a design exists, how it behaves under load, how it fails, and what evidence a principal engineer needs before launch.
+---
 
-> [!IMPORTANT]
-> The standard is not whether the API works on a developer machine. The standard is whether the design remains understandable, observable, secure, and operable when customers, incidents, and organizational pressure arrive.
+# Why Should a Principal Engineer Care?
 
-## Table of Contents
+Most developers integrate external APIs with one of two naive patterns:
 
-- [Purpose](#purpose)
-- [Theory](#theory)
-- [Deep Dive](#deep-dive)
-- [How It Works Internally](#how-it-works-internally)
-- [Production Usage](#production-usage)
-- [Common Mistakes](#common-mistakes)
-- [Trade-offs](#trade-offs)
-- [Best Practices](#best-practices)
-- [Examples](#examples)
-- [Code Snippets](#code-snippets)
-- [Architecture Notes](#architecture-notes)
-- [Principal Thinking](#principal-thinking)
-- [Review Questions](#review-questions)
-- [References](#references)
-- [Summary](#summary)
-
-## Theory
-
-The production-ready Web API foundation is a set of architectural constraints and runtime behaviors, not a checklist of NuGet packages. A principal engineer treats each framework feature as a design decision with blast radius across security, operability, performance, cost, and long-term maintainability.
-
-Core ideas in this module:
-
-- socket exhaustion
-- handler pooling
-- typed clients
-- resilience
-- timeouts
-
-A mature API design separates policy from detail. HTTP, persistence, messaging, cloud configuration, logging, and documentation are details that serve the business capability. They must be explicit, replaceable where necessary, and observable when they fail.
-
-## Deep Dive
-
-| Concern | Principal-level question |
-|---|---|
-| socket exhaustion | Runtime behavior, production failure mode, test evidence, and decision owner |
-| handler pooling | Runtime behavior, production failure mode, test evidence, and decision owner |
-| typed clients | Runtime behavior, production failure mode, test evidence, and decision owner |
-| resilience | Runtime behavior, production failure mode, test evidence, and decision owner |
-| timeouts | Runtime behavior, production failure mode, test evidence, and decision owner |
-
-Deep understanding requires following the request from socket acceptance through endpoint execution, dependency resolution, validation, exception translation, response writing, logging, metrics, and cloud platform feedback. The interesting engineering work happens at boundaries: when dependencies are slow, configuration is wrong, clients misuse the API, or the team needs to evolve the contract without breaking revenue-generating consumers.
-
-Performance impact is rarely isolated. A small allocation in middleware can multiply by every request. A missing timeout can exhaust threads. A verbose log property can create significant Application Insights or Log Analytics cost. A poorly scoped dependency can leak memory or corrupt tenant state. A vague error contract can turn every client integration into custom support work.
-
-## How It Works Internally
-
-ASP.NET Core builds a host, loads configuration providers in order, constructs an IServiceProvider, starts Kestrel, and executes requests through a composed middleware pipeline. Endpoint routing selects metadata and delegates. Model binding and validation prepare inputs. Application services execute use cases. Infrastructure adapters talk to databases and remote services. Result execution serializes responses and emits telemetry.
-
-Internal mechanics to reason about:
-
-- The dependency injection container resolves constructor graphs and enforces lifetimes only when scope validation is enabled.
-- Middleware executes in registration order on the way in and reverse order on the way out.
-- Async request handling uses the .NET thread pool; blocking work can starve unrelated requests.
-- Configuration values are layered; later providers override earlier providers.
-- Logging providers receive structured events, scopes, categories, and levels; downstream sinks decide storage and cost.
-- Exceptions are expensive control-flow mechanisms and should represent unexpected failure, not ordinary business decisions.
-
-```mermaid
-sequenceDiagram
-    participant API
-    participant Factory as IHttpClientFactory
-    participant Handler as Pooled Handler
-    participant DNS
-    participant Downstream
-    API->>Factory: Create typed client
-    Factory->>Handler: Reuse or rotate handler
-    Handler->>DNS: Resolve when connection expires
-    Handler->>Downstream: Send request with timeout
-    Downstream-->>API: Response or failure
+### Anti-Pattern 1: The Socket Exhaustion Trap
+```csharp
+public async Task<PaymentResponse> ProcessPayment(PaymentRequest request)
+{
+    using var client = new HttpClient(); // DANGEROUS: Exhausts OS sockets under load
+    return await client.PostAsJsonAsync("https://api.payments.com", request);
+}
 ```
 
-## Production Usage
-
-Use this capability as part of the launch foundation. Define the production contract, add tests around externally visible behavior, record the operational assumptions, and make the behavior visible through telemetry. Production usage means the team knows how the feature behaves during deploys, scale-out, dependency failure, secret rotation, and partial regional outage.
-
-Operational checklist:
-
-- Define the owner and review cadence.
-- Document environment-specific behavior.
-- Add observable signals: log events, metrics, traces, health checks, or dashboards.
-- Add failure-mode tests where the blast radius is high.
-- Record rollout and rollback instructions.
-- Estimate cost impact before high-volume launch.
-
-## Common Mistakes
-
-| Mistake | Why it hurts in production | Better approach |
-|---|---|---|
-| Treating framework defaults as architecture | Defaults optimize for broad usability, not your launch risk | Make explicit decisions and document them |
-| Mixing domain logic with transport code | Makes tests brittle and contract evolution risky | Keep use cases independent of HTTP details |
-| Ignoring cancellation and timeouts | Slow dependencies can consume threads and sockets | Propagate CancellationToken and bound every call |
-| Logging unbounded payloads | Increases cost and may leak sensitive data | Log identifiers, states, and safe dimensions |
-| Adding abstractions for style only | Creates indirection without resilience | Add abstractions where they protect policy or enable tests |
-
-## Trade-offs
-
-| Decision pressure | Optimize for | Cost |
-|---|---|---|
-| Fast launch | Simpler architecture and fewer moving parts | Less isolation if requirements grow quickly |
-| Enterprise contract stability | Versioning, compatibility tests, documentation | More governance and slower breaking changes |
-| Deep observability | Faster incident response | Storage cost and data classification work |
-| Strong validation | Safer inputs and clearer client errors | More rules to maintain and test |
-| Cloud-native behavior | Better scaling and operations | Requires platform knowledge and automated verification |
-
-```mermaid
-flowchart TD
-    A[Outbound dependency] --> B{One cohesive API wrapper?}
-    B -->|Yes| C[Typed HttpClient]
-    B -->|No, shared configuration| D[Named HttpClient]
-    B -->|Many dynamic endpoints| E[Factory plus explicit request construction]
-    C --> F[Add timeout, resilience, telemetry]
-    D --> F
-    E --> F
+### Anti-Pattern 2: The Stale DNS Trap
+```csharp
+// DANGEROUS: Never refreshes DNS changes when payment gateway fails over
+private static readonly HttpClient _client = new HttpClient();
 ```
 
-## Best Practices
+Both patterns will crash production systems under scale.
 
-- Make external contracts explicit: OpenAPI, status codes, ProblemDetails, versioning, pagination, and error semantics.
-- Prefer simple architectural boundaries with strong tests over elaborate layering with weak ownership.
-- Design for failure first: dependency timeout, invalid configuration, expired secret, partial outage, and noisy client.
-- Use structured logs and stable dimensions; avoid high-cardinality values unless necessary.
-- Validate configuration on startup for critical settings.
-- Keep middleware order intentional and reviewed.
-- Define health checks for orchestrators, not for human curiosity alone.
-- Use architecture decision records for choices that affect multiple teams or production operations.
+As a Principal Engineer, you must understand:
+- Why OS sockets linger in `TIME_WAIT` state and exhaust TCP port ranges.
+- How `IHttpClientFactory` solves socket exhaustion AND DNS stale-cache problems simultaneously.
+- How to compose outgoing pipelines with **DelegatingHandlers** for telemetry, authentication, and correlation.
+- How to apply modern resilience engineering with **Microsoft.Extensions.Resilience** (Polly v8).
 
-## Examples
+---
 
-### Architecture Decision Record Excerpt
+# Production Story
 
-| Field | Example |
-|---|---|
-| Decision | Use typed HttpClient for cohesive downstream APIs |
-| Status | Accepted |
-| Context | The API calls a billing service on the critical request path |
-| Consequence | Better testability and encapsulated resilience policy; more classes to own |
-| Review trigger | New downstream endpoint, latency SLO change, or incident involving billing |
+Wednesday.
 
-### Production Review Evidence
+01:20 PM.
 
-- Unit tests for domain and application rules.
-- Integration tests for HTTP contract and middleware behavior.
-- Load test showing latency, CPU, memory, and dependency behavior at target concurrency.
-- Dashboard covering request rate, error rate, duration, saturation, dependency calls, and log volume.
-- Runbook explaining rollback, configuration ownership, and incident triage.
+Nova Commerce's checkout service starts throwing connection timeouts:
 
+```
+System.Net.Sockets.SocketException (10048): 
+Only one usage of each socket address (protocol/network address/port) is normally permitted.
+```
 
-## Code Snippets
+The application server had 16 CPU cores and 64 GB of RAM. CPU utilization was under 15%.
+
+Yet, every outbound HTTP call to the Payment Gateway and Inventory Service was blocked.
+
+### The Investigation:
+Running `netstat -ano | findstr TIME_WAIT` on the server revealed **over 28,000 TCP sockets** stuck in `TIME_WAIT` state.
+
+A developer had placed `using var client = new HttpClient();` inside the checkout command handler.
+
+Even though C#'s `Dispose()` closed the .NET object, the underlying operating system (Windows TCP/IP stack) keeps the TCP socket open for 120 to 240 seconds (`2 * MSL` - Maximum Segment Lifetime) to ensure in-flight packets arrive safely.
+
+Under 250 requests/sec, the server completely exhausted the available ephemeral port range (ports 49152–65535), bringing checkout to an absolute halt.
+
+---
+
+# The Dual Dilemma: Sockets vs DNS
+
+```
+Option 1: new HttpClient() per request
+┌────────────────────────────────────────┐
+│ PRO: Honors DNS changes.               │
+│ CON: Socket Exhaustion (Crash).        │
+└────────────────────────────────────────┘
+
+Option 2: static HttpClient for lifetime
+┌────────────────────────────────────────┐
+│ PRO: Reuses TCP connections.           │
+│ CON: Ignores DNS updates (Failover     │
+│      traffic is sent to dead IPs).     │
+└────────────────────────────────────────┘
+
+Option 3: IHttpClientFactory (Principal Standard)
+┌─────────────────────────────────────────────────────────────┐
+│ Pools underlying HttpMessageHandler connections for 2 mins. │
+│ Rotates handlers to refresh DNS. Reuses sockets safely.     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+# The Four Ways to Use HttpClient
+
+A Principal Engineer understands the trade-offs of all four consumption patterns:
+
+### 1. Direct Instantiation (❌ Anti-Pattern)
+Creates socket exhaustion. Never use in production web applications.
+
+---
+
+### 2. Named Clients (`AddHttpClient("name")`)
+```csharp
+builder.Services.AddHttpClient("PaymentGateway", client =>
+{
+    client.BaseAddress = new Uri("https://api.paymentgateway.com/v1/");
+    client.Timeout = TimeSpan.FromSeconds(5);
+});
+```
+```csharp
+public class PaymentService(IHttpClientFactory factory)
+{
+    public async Task PayAsync()
+    {
+        var client = factory.CreateClient("PaymentGateway");
+        // ...
+    }
+}
+```
+*Assessment*: Better, but relies on magic strings and leaks `HttpClient` details into business services.
+
+---
+
+### 3. Typed Clients (✅ Recommended)
+Encapsulates HTTP calls behind a clean domain interface:
 
 ```csharp
-builder.Services.AddHttpClient<PaymentsClient>(client =>
+public interface IPaymentGatewayClient
 {
-    client.BaseAddress = new Uri("https://payments.example.com");
-    client.Timeout = TimeSpan.FromSeconds(2);
+    Task<PaymentResult> ChargeAsync(ChargeRequest request, CancellationToken ct);
+}
+
+public sealed class PaymentGatewayClient : IPaymentGatewayClient
+{
+    private readonly HttpClient _httpClient;
+
+    public PaymentGatewayClient(HttpClient httpClient)
+    {
+        _httpClient = httpClient;
+    }
+
+    public async Task<PaymentResult> ChargeAsync(ChargeRequest request, CancellationToken ct)
+    {
+        var response = await _httpClient.PostAsJsonAsync("charges", request, ct);
+        response.EnsureSuccessStatusCode();
+        return await response.Content.ReadFromJsonAsync<PaymentResult>(cancellationToken: ct);
+    }
+}
+```
+
+#### Registration in `Program.cs`:
+```csharp
+builder.Services.AddHttpClient<IPaymentGatewayClient, PaymentGatewayClient>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["PaymentGateway:BaseUrl"]!);
+    client.Timeout = TimeSpan.FromSeconds(5);
+    client.DefaultRequestHeaders.Add("Accept", "application/json");
+});
+```
+
+---
+
+# DelegatingHandlers: Outgoing Middleware Pipeline
+
+Just as incoming requests pass through Middleware, outgoing HTTP requests pass through a chain of **DelegatingHandlers**.
+
+```
+Outgoing Request
+       │
+       ▼
+CorrelationIdHandler (Injects X-Correlation-Id / W3C TraceContext)
+       │
+       ▼
+AuthenticationHandler (Injects Bearer Token / API Key)
+       │
+       ▼
+LoggingHandler (Logs outbound latency and response status)
+       │
+       ▼
+SocketsHttpHandler (Pools TCP Sockets & Executes Network I/O)
+```
+
+### Implementing a Correlation ID DelegatingHandler:
+```csharp
+public sealed class CorrelationIdDelegatingHandler : DelegatingHandler
+{
+    private readonly IHttpContextAccessor _httpContextAccessor;
+
+    public CorrelationIdDelegatingHandler(IHttpContextAccessor httpContextAccessor)
+    {
+        _httpContextAccessor = httpContextAccessor;
+    }
+
+    protected override async Task<HttpResponseMessage> SendAsync(
+        HttpRequestMessage request, 
+        CancellationToken cancellationToken)
+    {
+        var correlationId = _httpContextAccessor.HttpContext?.TraceIdentifier 
+                            ?? Guid.NewGuid().ToString("N");
+
+        request.Headers.TryAddWithoutValidation("X-Correlation-Id", correlationId);
+
+        return await base.SendAsync(request, cancellationToken);
+    }
+}
+```
+
+#### Registration:
+```csharp
+builder.Services.AddTransient<CorrelationIdDelegatingHandler>();
+
+builder.Services.AddHttpClient<IPaymentGatewayClient, PaymentGatewayClient>()
+    .AddHttpMessageHandler<CorrelationIdDelegatingHandler>();
+```
+
+---
+
+# Resilience with `Microsoft.Extensions.Resilience` (Polly v8)
+
+In .NET 8+, resilience pipelines are built directly into `IHttpClientFactory` via `AddStandardResilienceHandler()`:
+
+```csharp
+builder.Services.AddHttpClient<IPaymentGatewayClient, PaymentGatewayClient>(client =>
+{
+    client.BaseAddress = new Uri("https://api.payments.com");
 })
-.AddStandardResilienceHandler();
+.AddStandardResilienceHandler(options =>
+{
+    // 1. Total Request Timeout (e.g. 10s across all retries)
+    options.TotalRequestTimeout.Timeout = TimeSpan.FromSeconds(10);
+
+    // 2. Retry Policy with Exponential Backoff and Jitter
+    options.Retry.MaxRetryAttempts = 3;
+    options.Retry.BackoffType = DelayBackoffType.Exponential;
+    options.Retry.UseJitter = true; // Prevents thundering herd problem
+    options.Retry.Delay = TimeSpan.FromMilliseconds(200);
+
+    // 3. Circuit Breaker Policy
+    options.CircuitBreaker.SamplingDuration = TimeSpan.FromSeconds(30);
+    options.CircuitBreaker.FailureRatio = 0.5; // Trip if 50% of calls fail
+    options.CircuitBreaker.MinimumThroughput = 20;
+    options.CircuitBreaker.BreakDuration = TimeSpan.FromSeconds(15);
+
+    // 4. Per-Attempt Timeout
+    options.AttemptTimeout.Timeout = TimeSpan.FromSeconds(2.5);
+});
 ```
 
-## Architecture Notes
+### Why Jitter Matters in Retry Policies:
+If 1,000 concurrent requests fail simultaneously due to a momentary network blip, retrying all 1,000 requests after exactly 200ms creates a **Thundering Herd** (Retry Storm) that DDOSes the recovering downstream service.
 
-The architecture should keep decisions visible. A principal engineer should be able to point to the code and answer: where does policy live, where do side effects happen, where does the public contract get shaped, and where will the team look during an incident?
+Adding random **Jitter** scatters retry attempts over time, allowing the downstream dependency to recover gracefully.
 
-Recommended baseline:
+---
 
-```text
-src/
-  Api/              HTTP, middleware, authentication, OpenAPI, controllers/endpoints
-  Application/      Use cases, ports, validation orchestration, DTOs
-  Domain/           Entities, value objects, invariants, domain services
-  Infrastructure/   EF Core, external HTTP clients, cloud adapters, logging adapters
-  Contracts/        Public request/response contracts if shared deliberately
-tests/
-  UnitTests/
-  IntegrationTests/
-  ArchitectureTests/
+# Common Mistakes
+
+❌ **Resolving Typed Clients from Singleton Services Directly**
+```csharp
+// Typed clients have transient lifetimes. Injecting them directly into Singletons can create capture bugs.
 ```
+✅ **Inject `IHttpClientFactory` into Singletons, or use `SocketsHttpHandler` with `PooledConnectionLifetime`.**
 
-Architecture notes for this module:
+❌ **Retrying Non-Idempotent HTTP Requests (e.g. `POST /payments`) Blindly**
+```csharp
+// DANGEROUS: If the server processed the payment but the response packet was dropped, retrying will charge again!
+```
+✅ **Only retry idempotent operations (GET, PUT, DELETE) or ensure outgoing POSTs include an `Idempotency-Key`.**
 
-- Runtime behavior must be knowable from code and docs.
-- Security boundaries must be enforced close to the request boundary and repeated in domain rules where invariants require it.
-- Maintainability comes from fewer hidden dependencies and clear ownership.
-- Scalability comes from bounded work, async I/O, stateless request handling, and thoughtful dependency limits.
-- Cost control is an architecture concern when telemetry, retries, and cloud resources scale with traffic.
+❌ **Not Propagating `CancellationToken`**
+```csharp
+public async Task<Data> FetchAsync() => await _client.GetFromJsonAsync<Data>("/items"); // Ignores client disconnection
+```
+✅ **Always accept and pass `CancellationToken ct` to every `HttpClient` method.**
 
-## Principal Thinking
+---
 
-A principal engineer asks different questions from an implementation owner:
+# Architect's Decision
 
-- Why this approach, and what evidence would change our mind?
-- Why not the simpler built-in default?
-- Why not a more sophisticated platform pattern?
-- When should we avoid this design?
-- What failure mode does this design make easier to detect?
-- What failure mode does it hide?
-- How would Microsoft implement this for a broad Azure customer base?
-- How would Amazon implement this for high-scale, operationally strict service ownership?
+### Scenario
+Nova Commerce integrates with a legacy third-party warehouse management system that experiences frequent 3-5 second latency spikes and occasional DNS failovers.
 
-Microsoft-style implementation usually emphasizes documented contracts, platform integration, secure defaults, compatibility, and tooling support. Amazon-style implementation usually emphasizes service ownership, operational metrics, blast-radius reduction, explicit runbooks, and continuous correction through incidents. A strong principal engineer can combine both instincts without cargo-culting either company.
+### Architecture Plan:
+1. **Typed Client**: Encapsulate warehouse operations in `IWarehouseApiClient`.
+2. **Connection Pooling**: Set `HandlerLifetime` to 2 minutes to refresh DNS changes every 120s while pooling sockets.
+3. **Resilience Pipeline**:
+   - Per-attempt timeout: 2 seconds.
+   - 3 Retries with Exponential Backoff and Jitter on HTTP 503 / 504.
+   - Circuit breaker configured to open if >50% of calls fail over a 30s window.
+4. **Telemetry**: Outgoing calls propagate W3C `traceparent` headers via `DelegatingHandler` for end-to-end distributed tracing.
 
-## Review Questions
+---
 
-1. What production failure is most likely if this area is implemented casually?
-2. Which behavior is part of the public contract, and how is it tested?
-3. Which runtime cost grows with request volume?
-4. Which cloud platform feature changes the design assumption?
-5. How would you explain the trade-off to a CTO, an SRE, and a feature team?
-6. What would cause you to revisit this decision in six months?
+# Principal Thinking
 
-## References
+| Level | Perspective | Focus |
+|---|---|---|
+| **Junior** | Functionality | "I used `new HttpClient()` to call the URL." |
+| **Senior** | Factory | "I registered a typed client using `AddHttpClient`." |
+| **Principal** | Distributed Systems & Sockets | "What is the TCP socket lifecycle, DNS refresh cadence, resilience pipeline (backoff, jitter, circuit breaker), and correlation propagation across downstream dependencies?" |
 
-- [ASP.NET Core documentation](https://learn.microsoft.com/aspnet/core/)
-- [ASP.NET Core fundamentals](https://learn.microsoft.com/aspnet/core/fundamentals/)
-- [Microsoft REST API Guidelines](https://github.com/microsoft/api-guidelines)
-- [Azure Architecture Center](https://learn.microsoft.com/azure/architecture/)
-- [Cloud Design Patterns](https://learn.microsoft.com/azure/architecture/patterns/)
-- Robert C. Martin, Clean Architecture
-- Mark Seemann, Dependency Injection Principles, Practices, and Patterns
-- Jeffrey Richter, CLR via C#
-- Andrew Lock, ASP.NET Core in Action
-- Martin Kleppmann, Designing Data-Intensive Applications
-- Martin Fowler architecture essays
-- Nick Chapsas, advanced .NET and ASP.NET Core content
+---
 
-## Summary
+# Learning Resources & References
 
-HTTP Clients is part of the launch foundation for an enterprise-grade public API. The principal-level expectation is not memorizing framework APIs; it is understanding runtime behavior, making trade-offs explicit, proving the design with tests and telemetry, and leaving behind a system that other engineers can operate confidently.
+### Authoritative Documentation
+- [Make HTTP requests using IHttpClientFactory in ASP.NET Core](https://learn.microsoft.com/en-us/dotnet/core/extensions/httpclient-factory)
+- [Building resilient HTTP requests in .NET with Polly](https://learn.microsoft.com/en-us/dotnet/core/resilience/http-resilience)
+- [Reliability Patterns: Circuit Breaker & Retry Storms](https://learn.microsoft.com/en-us/azure/architecture/patterns/circuit-breaker)
+
+---
+
+# Self Assessment
+
+1. Explain the mechanism behind TCP socket exhaustion and why `using (var client = new HttpClient())` causes it.
+2. How does `IHttpClientFactory` resolve the conflict between socket reuse and DNS cache updates?
+3. What is the role of `DelegatingHandler` in outgoing HTTP communication?
+4. Why is Jitter essential when configuring exponential backoff retry policies in distributed systems?
+5. Why must you be cautious when applying automated retry policies to HTTP `POST` requests?
