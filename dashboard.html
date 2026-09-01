@@ -1611,25 +1611,25 @@
                 duration: "Week 3 (7 Days)",
                 description: "Azure Blob Storage, S3 object storage, System.IO.Pipelines zero-allocation streaming, Chunked uploads, HTTP Range requests, Shared Access Signatures (SAS), and CDN edge caching.",
                 items: [
-                    { id: "s3-01", title: "01 - Story: The Large Object Heap Outage", path: "03-Storage/01-Story.md", status: "pending", note: "" },
-                    { id: "s3-02", title: "02 - Learning Objectives & Storage Competencies", path: "03-Storage/02-Learning-Objectives.md", status: "pending", note: "" },
-                    { id: "s3-03", title: "03 - Storage Requirements & SLA Specifications", path: "03-Storage/03-Storage-Requirements.md", status: "pending", note: "" },
-                    { id: "s3-04", title: "04 - High-Throughput Storage & Streaming Architecture", path: "03-Storage/04-Storage-Architecture.md", status: "pending", note: "" },
-                    { id: "s3-05", title: "05 - Cloud Object Storage Architecture (Azure Blob & S3)", path: "03-Storage/05-Blob-Storage-Architecture.md", status: "pending", note: "" },
-                    { id: "s3-05a", title: "05A - Inside Azure Blob Storage REST & Block Commits", path: "03-Storage/05A-Inside-Blob-Storage-Internals.md", status: "pending", note: "" },
-                    { id: "s3-06", title: "06 - High-Performance Streaming with System.IO.Pipelines", path: "03-Storage/06-System-IO-Pipelines.md", status: "pending", note: "" },
-                    { id: "s3-06a", title: "06A - Inside Pipelines Memory & Buffer Pool Internals", path: "03-Storage/06A-Inside-Pipelines-Memory-Internals.md", status: "pending", note: "" },
-                    { id: "s3-07", title: "07 - Resumable Chunked Upload Protocols (TUS & Block Blobs)", path: "03-Storage/07-Chunked-And-Resumable-Uploads.md", status: "pending", note: "" },
-                    { id: "s3-08", title: "08 - Media Delivery with HTTP 206 Partial Content", path: "03-Storage/08-HTTP-Range-Requests-Streaming.md", status: "pending", note: "" },
-                    { id: "s3-09", title: "09 - Delegated Access with Shared Access Signatures (SAS)", path: "03-Storage/09-Direct-Client-Upload-SAS.md", status: "pending", note: "" },
-                    { id: "s3-10", title: "10 - CDN Edge Caching & Cache-Control Architecture", path: "03-Storage/10-CDN-Edge-Caching-Storage.md", status: "pending", note: "" },
-                    { id: "s3-11", title: "11 - Principal Storage & Streaming Release Checklist", path: "03-Storage/11-Storage-Security-Checklist.md", status: "pending", note: "" },
-                    { id: "s3-12", title: "12 - Hands-On Storage & Streaming Architecture Labs", path: "03-Storage/12-Hands-On-Storage-Labs.md", status: "pending", note: "" },
-                    { id: "s3-13", title: "13 - Production Incident Post-Mortem: 50GB Memory Leak", path: "03-Storage/13-Storage-Incident.md", status: "pending", note: "" },
-                    { id: "s3-14", title: "14 - Principal Storage Architectural Defense Questions", path: "03-Storage/14-Principal-Defense-Questions.md", status: "pending", note: "" },
-                    { id: "s3-15", title: "15 - Principal Storage Technical Interview Scenarios", path: "03-Storage/15-Interview-Scenarios.md", status: "pending", note: "" },
-                    { id: "s3-16", title: "16 - Sprint 03 Executive Summary & Storage Synthesis", path: "03-Storage/16-Summary.md", status: "pending", note: "" },
-                    { id: "s3-17", title: "17 - Curated Storage & Streaming Learning Resources", path: "03-Storage/17-Resources.md", status: "pending", note: "" }
+                    { id: "s3-01", title: "01 - Story: The Large Object Heap Outage", path: "03-Storage/01-Story.md", status: "done", note: "LOH fragmentation and Gen 2 GC pauses caused by loading large files into byte arrays." },
+                    { id: "s3-02", title: "02 - Learning Objectives & Storage Competencies", path: "03-Storage/02-Learning-Objectives.md", status: "done", note: "" },
+                    { id: "s3-03", title: "03 - Storage Requirements & SLA Specifications", path: "03-Storage/03-Storage-Requirements.md", status: "done", note: "" },
+                    { id: "s3-04", title: "04 - High-Throughput Storage & Streaming Architecture", path: "03-Storage/04-Storage-Architecture.md", status: "done", note: "Direct-to-storage architecture offloads Web API servers completely." },
+                    { id: "s3-05", title: "05 - Cloud Object Storage Architecture (Azure Blob & S3)", path: "03-Storage/05-Blob-Storage-Architecture.md", status: "done", note: "Block blobs, Append blobs, Page blobs, and multi-tier lifecycle rules." },
+                    { id: "s3-05a", title: "05A - Inside Azure Blob Storage REST & Block Commits", path: "03-Storage/05A-Inside-Blob-Storage-Internals.md", status: "done", note: "PutBlock + PutBlockList two-phase upload commit mechanics." },
+                    { id: "s3-06", title: "06 - High-Performance Streaming with System.IO.Pipelines", path: "03-Storage/06-System-IO-Pipelines.md", status: "done", note: "Zero-allocation backpressure streaming using PipeReader / PipeWriter." },
+                    { id: "s3-06a", title: "06A - Inside Pipelines Memory & Buffer Pool Internals", path: "03-Storage/06A-Inside-Pipelines-Memory-Internals.md", status: "done", note: "MemoryPool<byte>.Shared and ReadOnlySequence segment slicing." },
+                    { id: "s3-07", title: "07 - Resumable Chunked Upload Protocols (TUS & Block Blobs)", path: "03-Storage/07-Chunked-And-Resumable-Uploads.md", status: "done", note: "TUS protocol open standard and idempotent chunk retransmission." },
+                    { id: "s3-08", title: "08 - Media Delivery with HTTP 206 Partial Content", path: "03-Storage/08-HTTP-Range-Requests-Streaming.md", status: "done", note: "Byte range parsing and Seekable stream playback." },
+                    { id: "s3-09", title: "09 - Delegated Access with Shared Access Signatures (SAS)", path: "03-Storage/09-Direct-Client-Upload-SAS.md", status: "done", note: "User Delegation SAS via Entra ID with short expiration windows." },
+                    { id: "s3-10", title: "10 - CDN Edge Caching & Cache-Control Architecture", path: "03-Storage/10-CDN-Edge-Caching-Storage.md", status: "done", note: "Cache-Control: immutable, s-maxage, and edge purging." },
+                    { id: "s3-11", title: "11 - Principal Storage & Streaming Release Checklist", path: "03-Storage/11-Storage-Security-Checklist.md", status: "done", note: "Storage Go/No-Go release audit." },
+                    { id: "s3-12", title: "12 - Hands-On Storage & Streaming Architecture Labs", path: "03-Storage/12-Hands-On-Storage-Labs.md", status: "done", note: "6 labs: SAS generation, pipeline streaming, chunked uploads." },
+                    { id: "s3-13", title: "13 - Production Incident Post-Mortem: 50GB Memory Leak", path: "03-Storage/13-Storage-Incident.md", status: "done", note: "SEV-1 post-mortem on memory leak and socket exhaustion." },
+                    { id: "s3-14", title: "14 - Principal Storage Architectural Defense Questions", path: "03-Storage/14-Principal-Defense-Questions.md", status: "done", note: "Defended direct client upload vs API proxying, SAS vs API keys." },
+                    { id: "s3-15", title: "15 - Principal Storage Technical Interview Scenarios", path: "03-Storage/15-Interview-Scenarios.md", status: "done", note: "Video streaming platform & massive log ingestion system design." },
+                    { id: "s3-16", title: "16 - Sprint 03 Executive Summary & Storage Synthesis", path: "03-Storage/16-Summary.md", status: "done", note: "Sprint 03 mastered." },
+                    { id: "s3-17", title: "17 - Curated Storage & Streaming Learning Resources", path: "03-Storage/17-Resources.md", status: "done", note: "" }
                 ]
             },
             {
@@ -1772,9 +1772,10 @@
             curriculum: initialCurriculum,
             sessions: [
                 { date: "Aug 30, 2026", topic: "01-Production-Ready-WebAPI (Sprint 01)", minutes: 360, confidence: 5, notes: "Mastered all 27 chapters, zero-allocation logging, RFC 7807/9457 problem details, and hands-on architecture labs." },
-                { date: "Aug 31, 2026", topic: "02-Authentication & Security (Sprint 02)", minutes: 320, confidence: 5, notes: "Completed OAuth2/OIDC, PKCE, asymmetric JWT crypto (RS256), resource-based authorization (anti-BOLA), and token family replay defense." }
+                { date: "Aug 31, 2026", topic: "02-Authentication & Security (Sprint 02)", minutes: 320, confidence: 5, notes: "Completed OAuth2/OIDC, PKCE, asymmetric JWT crypto (RS256), resource-based authorization (anti-BOLA), and token family replay defense." },
+                { date: "Aug 31, 2026", topic: "03-Storage & Streaming (Sprint 03)", minutes: 300, confidence: 5, notes: "Mastered direct-to-storage SAS uploads, zero-allocation System.IO.Pipelines streaming, HTTP 206 Range requests, and CDN edge caching." }
             ],
-            totalSecondsStudied: 40800,
+            totalSecondsStudied: 58800,
             currentFilter: "all",
             searchQuery: "",
             game: {
@@ -2158,17 +2159,18 @@
             });
             updateCompleteQuestButton();
 
-                        // 1. Check in-memory Offline Curriculum DB first (works 100% locally on file:// without CORS!)
+            // 1. Check in-memory Offline Curriculum DB first (works 100% locally on file:// without CORS!)
             let markdownContent = null;
             if (window.OFFLINE_CURRICULUM_DB) {
-                // Normalize path keys
-                const normPath = item.path.replace(/\/g, '/');
-                markdownContent = window.OFFLINE_CURRICULUM_DB[normPath] || window.OFFLINE_CURRICULUM_DB[item.path];
+                // Normalize path keys (handle both forward and back slashes)
+                const normPath = item.path.replace(/\\/g, '/');
+                const winPath = item.path.replace(/\//g, '\\');
+                markdownContent = window.OFFLINE_CURRICULUM_DB[normPath] || window.OFFLINE_CURRICULUM_DB[winPath] || window.OFFLINE_CURRICULUM_DB[item.path];
                 if (!markdownContent) {
                     // Try case-insensitive or base filename lookup
                     const baseName = normPath.split('/').pop().toLowerCase();
                     for (const [k, v] of Object.entries(window.OFFLINE_CURRICULUM_DB)) {
-                        if (k.toLowerCase().endsWith(baseName)) {
+                        if (k.toLowerCase().replace(/\\/g, '/').endsWith(baseName)) {
                             markdownContent = v;
                             break;
                         }
@@ -2190,8 +2192,8 @@
 
             if (markdownContent) {
                 const html = renderMarkdown(markdownContent);
-            document.getElementById("questMarkdownBody").innerHTML = html;
-            document.getElementById("questContentArea").scrollTop = 0;
+                document.getElementById("questMarkdownBody").innerHTML = html;
+                document.getElementById("questContentArea").scrollTop = 0;
             } else {
                 document.getElementById("questMarkdownBody").innerHTML = `
                     <div class="quest-error-box">
@@ -2205,6 +2207,52 @@
                     </div>`;
             }
         }
+
+        function closeQuest() {
+            document.getElementById("questOverlay").classList.remove("show");
+            activeQuest = null;
+        }
+
+        function toggleQuestPhase(phase, isChecked) {
+            if (!activeQuest) return;
+            ensureGameState();
+            const itemId = activeQuest.item.id;
+            if (!studentState.game.questProgress[itemId]) {
+                studentState.game.questProgress[itemId] = { theory: false, deepdive: false, apply: false, defend: false };
+            }
+            studentState.game.questProgress[itemId][phase] = isChecked;
+            const container = document.getElementById(`phase-${phase}`);
+            if (container) container.classList.toggle("checked", isChecked);
+            updateCompleteQuestButton();
+            saveStudentState();
+        }
+
+        function updateCompleteQuestButton() {
+            if (!activeQuest) return;
+            const itemId = activeQuest.item.id;
+            const progress = studentState.game.questProgress[itemId] || {};
+            const allDone = ["theory", "deepdive", "apply", "defend"].every(p => progress[p]);
+            const btn = document.getElementById("btnCompleteQuest");
+            if (btn) {
+                btn.disabled = !allDone;
+            }
+        }
+
+        function completeQuest() {
+            if (!activeQuest) return;
+            const { sprint, item } = activeQuest;
+            const wasDone = item.status === "done";
+            item.status = "done";
+            const xpEarned = getItemXp(item);
+
+            // Check if daily mission completed
+            const nextQuest = findNextQuest();
+            if (nextQuest && nextQuest.item.id === item.id) {
+                if (!studentState.game.dailyMissionCompleted) {
+                    studentState.game.dailyMissionCompleted = true;
+                    awardXp(50, "Daily Mission Complete");
+                }
+            }
 
             if (!wasDone) awardXp(xpEarned, item.title);
 
