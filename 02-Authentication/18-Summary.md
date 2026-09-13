@@ -51,6 +51,18 @@ In **Sprint 02: Authentication & Security**, we mastered the cryptographic, prot
 - Ephemeral containers must share a centralized Data Protection repository in Azure Blob Storage / Redis.
 - Keys must be encrypted at rest with cloud HSM master keys and rotated automatically every 90 days.
 
+### 6. Monotonic Session Versioning Enables Instant Global Revocation
+- Stateless JWT access tokens can be immediately revoked across all active devices by embedding an atomic integer `sessionVersion`.
+- L1 in-process memory caching paired with an L2 Redis distributed store delivers sub-millisecond evaluation with zero SQL connection exhaustion.
+
+### 7. Dual-Rail Architecture Isolates Client Threat Surfaces
+- First-party web applications leverage Backend-for-Frontend (BFF) HttpOnly session cookies, making DOM XSS token theft impossible.
+- Real-time WebSockets and SignalR connections must be strictly partitioned into `tenant:{tenantId}:user:{userId}` groups and forcibly terminated upon session revocation.
+
+### 8. Multi-Factor Authentication & Credential Defense Require Mathematical Rigor
+- TOTP implementations must enforce atomic time-step tracking (`totpLastStep`) to defeat 30-second token replay vulnerabilities.
+- Direct credential handling requires memory-hard KDFs (Argon2id), constant-time execution (`CryptographicOperations.FixedTimeEquals`), anti-user-enumeration dummy hashing, and one-way SHA-256 token hashing at rest.
+
 ---
 
 # Looking Ahead: Sprint 03 Preview

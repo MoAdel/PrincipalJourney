@@ -60,3 +60,39 @@ As the Principal Security Architect, you must translate organizational complianc
 1. **Zero Wildcards in Production**: `AllowAnyOrigin()` and `AllowAnyHeader()` with credentials are strictly prohibited in production environments.
 2. **Strict Origin Whitelisting**: CORS must be restricted to explicit, verified domain names.
 3. **Preflight Optimization**: `OPTIONS` preflight responses must specify `Access-Control-Max-Age` to reduce browser overhead.
+
+---
+
+# 7. Monotonic Session Versioning & Global Revocation (SEC-REQ-07)
+
+1. **Monotonic Version Counter**: Every user account must possess a canonical `SessionVersion` integer tracked in the primary database and embedded into issued JWT claims.
+2. **Instant Multi-Device Termination**: The `SessionVersion` must be atomically incremented upon password changes, resets, role demotions, account suspension, and MFA deactivation. Any token carrying an older version must be rejected immediately across all API nodes (< 1s global propagation).
+3. **Multi-Tiered Cache Invalidation**: The authentication middleware must evaluate `sessionVersion` against an in-process L1 cache (15s sliding TTL) backed by a distributed Redis L2 cache, eliminating SQL query bottlenecks during peak load.
+
+---
+
+# 8. Dual-Rail Transport Security & Real-Time Eviction (SEC-REQ-08)
+
+1. **Dual-Rail Client Boundary**: First-party web applications must use encrypted, `HttpOnly`, `SameSite=Lax`, and `Secure` session cookies (Rail A / BFF), completely eliminating token exposure to JavaScript DOM XSS. Native mobile apps and machine-to-machine integrations must use Bearer JWTs with refresh token rotation (Rail B).
+2. **Real-Time Handshake Security**: WebSocket and SignalR connections must authenticate via session cookies or short-lived negotiation tickets. Passing raw, long-lived JWTs in URLs is strictly prohibited unless reverse proxy access logs actively redact the `access_token` query parameter.
+3. **Real-Time Tenant Room Isolation & Forced Eviction**: Real-time clients must be strictly bound to private tenant and user groups (`tenant:{tenantId}:user:{userId}`). Upon session invalidation or user lockout, the real-time hub must forcibly terminate running socket connections (`Clients.User(id).Abort()`).
+
+---
+
+# 9. Multi-Factor Authentication & Replay Prevention (SEC-REQ-09)
+
+1. **RFC 6238 / RFC 4226 Compliance**: TOTP authentication must implement standard 30-second time-step windows, 6-digit codes, and 4-bit dynamic truncation without third-party opaque black-boxes.
+2. **Atomic Replay Prevention**: The verification engine must enforce an atomic SQL step check (`UPDATE Users SET TotpLastStep = @step WHERE Id = @id AND (TotpLastStep IS NULL OR TotpLastStep < @step)`), guaranteeing that a 6-digit code can never be replayed within the remaining validity window.
+3. **Ephemeral Challenge Tokens**: Password verification must not issue full application sessions for MFA-enabled accounts; it must issue a short-lived (5-minute) challenge token requiring TOTP verification to unlock access.
+4. **Hashed Recovery Codes**: Emergency backup recovery codes (`XXXXX-XXXXX`) must be stored strictly as **SHA-256 hashes at rest** and consumed atomically for single-use emergency recovery.
+5. **Risk-Based Policy**: MFA must be mandatory for all administrative and financial roles, while operational field staff follow balanced risk-adjusted policies.
+
+---
+
+# 10. Direct Credential Defense & Delegation Boundaries (SEC-REQ-10)
+
+1. **Modern Password Hashing**: Passwords must be hashed using **Argon2id** (64MB memory, 3 passes, 4 threads) or **Bcrypt** (cost factor >= 10). General-purpose algorithms (SHA-256, MD5) are unconditionally forbidden.
+2. **Anti-User-Enumeration**: Authentication and password reset endpoints must return identical generic responses (`GENERIC_OK`) in constant time, executing dummy cryptographic work on negative lookups to eliminate timing side-channels.
+3. **Constant-Time Evaluation**: All comparisons of tokens, signatures, and hashes must use `CryptographicOperations.FixedTimeEquals` to defeat byte-by-byte timing attacks.
+4. **One-Way Token Hashing at Rest**: Refresh tokens, password reset tokens, and recovery codes must be stored in the database exclusively as **SHA-256 hashes**.
+5. **Delegation Invariants**: Branch administrators cannot assign administrative roles; administrators cannot demote or escalate their own accounts; and the system must guarantee the immutable existence of at least one active tenant owner.

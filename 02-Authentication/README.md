@@ -60,9 +60,10 @@ By the end of this sprint, you will master:
 1. **Protocol Fundamentals**: OAuth 2.0 Authorization Code Flow with PKCE, Client Credentials Flow, OIDC ID Tokens vs Access Tokens.
 2. **Cryptographic Mechanics**: Asymmetric signing (RS256/ES256), JWKS endpoint discovery (`.well-known/jwks.json`), `kid` key rotation, algorithmic downgrade attacks (`alg: none`).
 3. **Authorization Engine**: ClaimsPrincipal construction, custom `IAuthorizationRequirement` & `AuthorizationHandler<T>`, Imperative Resource-Based Authorization.
-4. **Token Lifecycle**: Short-lived access tokens, Sliding refresh tokens, Cryptographic token binding, Redis-backed revocation blacklists.
-5. **Key Management**: ASP.NET Core Data Protection Key Ring, Azure Key Vault envelope encryption, Blob Storage persistence.
-6. **Web Security**: Strict CORS policies, Preflight caching, Rate limiting, Defense against BOLA, Broken Authentication, and Mass Assignment.
+4. **Token Lifecycle & Session Versioning**: Short-lived access tokens, Sliding refresh tokens, Monotonic `sessionVersion` instant multi-device invalidation, Redis-backed revocation blacklists.
+5. **Key Management & Multi-Rail**: ASP.NET Core Data Protection Key Ring, Azure Key Vault envelope encryption, Dual-Rail Cookie BFF vs Bearer architecture, Real-time WebSocket/SignalR connection security.
+6. **Multi-Factor Authentication & Credential Defense**: RFC 6238/4226 TOTP mathematical engine, atomic replay prevention (`totpLastStep`), emergency recovery codes, anti-user-enumeration constant-time defenses, and administrative delegation governance.
+7. **Web Security**: Strict CORS policies, Preflight caching, Rate limiting, Defense against BOLA, Broken Authentication, and Mass Assignment.
 
 ---
 
@@ -82,10 +83,14 @@ By the end of this sprint, you will master:
 ├── 07A-Inside-Policy-Engine.md
 ├── 08-Resource-Based-Authorization.md
 ├── 09-Token-Rotation-Revocation.md
+├── 09A-Inside-Session-Versioning-Hybrid.md
 ├── 10-Data-Protection-API.md
 ├── 10A-Inside-Data-Protection-KeyRing.md
+├── 10B-Dual-Rail-And-Realtime-Security.md
 ├── 11-CORS-Security-Policy.md
 ├── 12-OWASP-API-Top10-Mitigation.md
+├── 12A-Inside-MFA-TOTP-Engine.md
+├── 12B-Credential-Defense-And-Delegation.md
 ├── 13-Security-Checklist.md
 ├── 14-Hands-On-Security-Labs.md
 ├── 15-Security-Incident.md

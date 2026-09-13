@@ -1,5 +1,0 @@
-- Theory
-- Lab
-- Notes
-- Review
-- Challenge complete

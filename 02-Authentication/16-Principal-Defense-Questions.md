@@ -61,3 +61,59 @@ Why does ASP.NET Core require centralized key management for the Data Protection
 - **Multi-Pod Scaling**: In a containerized environment (Kubernetes), each pod runs in an ephemeral container. If keys are stored locally, cookies encrypted by Pod A cannot be decrypted by Pod B, causing random session drops.
 - **Centralized Persistence**: Keys must be centralized in durable storage (Azure Blob / S3 / Redis) with envelope encryption via Azure Key Vault / AWS KMS.
 - **Key Loss Disaster**: If the Data Protection keys are permanently deleted or lost, all existing encrypted cookies, OAuth state tokens, and protected database fields become permanently unrecoverable."
+
+---
+
+# Question 5: Monotonic Session Versioning vs Pure Stateless JWTs
+
+### The Scenario:
+A lead architect argues: *"Adding a `sessionVersion` check to our authentication pipeline ruins statelessness. If we have to verify a version on every request, we might as well go back to monolithic database sessions."*
+
+### Principal Engineer Defense:
+"Pure statelessness is a dangerous illusion when identity mutates. In the real world, employees are terminated, credentials leak, and roles are revoked. If your system cannot terminate active sessions on other devices immediately upon password reset, your zero-trust posture is broken.
+
+**The Principal Solution**:
+We do not fall back to monolithic relational database sessions. We implement **Multi-Tiered Session Versioning**:
+1. The user record maintains an atomic integer `sessionVersion` that increments upon security events (password reset, role demotion, suspension).
+2. The current version is cached in-process in an **L1 Memory Cache** with a 15-second sliding window (< 0.005ms latency, zero I/O).
+3. The canonical version lives in an **L2 Redis Cache** ($O(1)$ < 0.3ms).
+4. Mutations publish a pub/sub invalidation message that purges L1 caches across all API nodes immediately.
+
+This gives us the best of both worlds: 99.9% of requests validate at purely in-memory speeds without touching the relational database, while achieving instant global revocation across all client devices."
+
+---
+
+# Question 6: Defeating the 30-Second TOTP Code Replay Window
+
+### The Scenario:
+During a security architecture review, a penetration tester notes: *"Your software authenticator TOTP engine uses a standard 30-second window with ±1 step tolerance. That means an intercepted 6-digit code can be replayed for up to 90 seconds. How do you prevent an attacker from replaying an intercepted TOTP code?"*
+
+### Principal Engineer Defense:
+"A naive TOTP implementation that only performs stateless mathematical verification (`VerifyCode(secret, code) == true`) is vulnerable to replay attacks throughout its entire validity window.
+
+**The Principal Solution**:
+We enforce **Atomic Step Invalidation**:
+1. We store a `TotpLastStep: bigint?` column on the user entity representing the time-step counter $T = \lfloor (\text{UnixTime} - T_0) / 30 \rfloor$.
+2. When a code is validated, the database update executes an atomic conditional mutation:
+   ```sql
+   UPDATE Users SET TotpLastStep = @CurrentStep
+   WHERE Id = @UserId AND (TotpLastStep IS NULL OR TotpLastStep < @CurrentStep);
+   ```
+3. If the update affects zero rows, it proves that a token for this exact time-step (or a future step) has already been consumed. The request is rejected immediately as a replay attempt.
+4. Furthermore, emergency recovery codes are stored as **one-way SHA-256 hashes at rest** and consumed atomically inside a database transaction, eliminating replay and database-leak risks."
+
+---
+
+# Question 7: Defending Dual-Rail Architecture & Real-Time WebSocket Security
+
+### The Scenario:
+A frontend tech lead asks: *"Why can't we just use Bearer tokens stored in localStorage for our React web app and pass `?access_token=...` in the query string for our SignalR WebSocket connections? It works and it's simple."*
+
+### Principal Engineer Defense:
+"Storing Bearer tokens in `localStorage` creates a catastrophic vulnerability: any XSS flaw in our codebase or in any of our hundreds of transitive npm dependencies grants malicious JavaScript unhindered access to exfiltrate raw user tokens.
+
+**The Principal Solution**:
+We enforce a **Dual-Rail Transport Security Boundary**:
+1. **Rail A (First-Party Web)**: The web SPA connects through a Backend-for-Frontend (BFF) using encrypted, `HttpOnly`, `SameSite=Lax`, `Secure` session cookies. JavaScript cannot read these cookies, rendering token exfiltration via DOM XSS impossible.
+2. **Rail B (Mobile & API)**: Native mobile apps, which run in isolated OS sandboxes without browser DOM XSS vectors, use Bearer JWTs with refresh token rotation stored in the iOS Keychain / Android Keystore.
+3. **WebSocket Security**: Browsers cannot send custom `Authorization` headers during WebSocket handshakes. Rail A leverages the existing `HttpOnly` cookie automatically during the HTTP 101 upgrade handshake. For native clients that must pass query tokens, reverse proxies (Caddy / NGINX) are configured to strictly scrub and mask `access_token` query parameters from all server access logs to prevent credential leakage."

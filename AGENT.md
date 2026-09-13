@@ -470,17 +470,69 @@ Always explain failure modes.
   - `17 - Curated Storage & Streaming Learning Resources` — **COMPLETED**
   - `Challenge 03` — **COMPLETED**
 
+- `04 - Database Performance & Relational Internals (Sprint 04)` — **COMPLETED**
+  - `01 - Story (The Lock Escalation Meltdown)` — **COMPLETED**
+  - `02 - Learning Objectives` — **COMPLETED**
+  - `03 - Database Requirements` — **COMPLETED**
+  - `04 - Relational Engine Architecture Blueprint` — **COMPLETED**
+  - `05 - Query Execution Plans Internals` — **COMPLETED**
+  - `05A - Inside Query Optimizer Internals (Statistics & Memo)` — **COMPLETED**
+  - `06 - B-Tree Indexing Strategies & Column Ordering` — **COMPLETED**
+  - `06A - Inside B-Tree 8KB Page Internals & Page Splits` — **COMPLETED**
+  - `07 - Transactions & ANSI Isolation Levels` — **COMPLETED**
+  - `07A - Inside the Version Store (MVCC & RCSI Mechanics)` — **COMPLETED**
+  - `08 - Locking Modes, Deadlocks & Lock Escalation` — **COMPLETED**
+  - `09 - Connection Pooling & Starvation Architecture` — **COMPLETED**
+  - `10 - EF Core Advanced Performance (Split Queries & Compiled Models)` — **COMPLETED**
+  - `11 - Dapper Micro-ORM & CQRS Read Optimization` — **COMPLETED**
+  - `12 - Table Partitioning & Sliding Window Archival` — **COMPLETED**
+  - `13 - Principal Database Security & Performance Checklist` — **COMPLETED**
+  - `14 - Hands-On Database Architecture Labs` — **COMPLETED**
+  - `15 - Production Incident Post-Mortem (Lock Avalanche)` — **COMPLETED**
+  - `16 - Principal Database Architectural Defense Questions` — **COMPLETED**
+  - `17 - Principal Database Technical Interview Scenarios` — **COMPLETED**
+  - `18 - Sprint 04 Executive Summary & Synthesis` — **COMPLETED**
+  - `19 - Curated Database Performance Resources` — **COMPLETED**
+  - `Challenge 04` — **COMPLETED**
+  - `War Room Track (04-Database-WarRoom/ Incidents 01-05)` — **COMPLETED**
+
+- `05 - Concurrency & .NET Runtime Internals (Sprint 05)` — **COMPLETED**
+  - `01 - Story (The Sync-Over-Async ThreadPool Blackout)` — **COMPLETED**
+  - `02 - Learning Objectives & Concurrency Competencies` — **COMPLETED**
+  - `03 - Concurrency Requirements & Operational Constraints` — **COMPLETED**
+  - `04 - .NET 9 CLR Runtime Architecture Blueprint` — **COMPLETED**
+  - `05 - Async State Machine Internals (IAsyncStateMachine)` — **COMPLETED**
+  - `05A - Inside Context Flow Internals (ExecutionContext & AsyncLocal)` — **COMPLETED**
+  - `06 - ThreadPool Engine Internals (Work-Stealing & Hill Climbing)` — **COMPLETED**
+  - `06A - Inside Sync-Over-Async Starvation Triage & Core Dumps` — **COMPLETED**
+  - `07 - Hardware Memory Models & Lock-Free Interlocked CAS` — **COMPLETED**
+  - `07A - Inside False Sharing & 64-Byte Cache Lines` — **COMPLETED**
+  - `08 - Synchronization Primitives (SemaphoreSlim & Channels)` — **COMPLETED**
+  - `09 - High-Throughput Collections & Striped Locking Traps` — **COMPLETED**
+  - `10 - Garbage Collector Internals (Gen 0/1/2, LOH & .NET 9 DATAS)` — **COMPLETED**
+  - `10A - Inside GC Allocations, Root Chains & Memory Leaks` — **COMPLETED**
+  - `11 - High-Performance Memory (Span, Memory & ArrayPool)` — **COMPLETED**
+  - `12 - Parallelism & SIMD Vectorization (Parallel.ForEachAsync)` — **COMPLETED**
+  - `13 - Concurrency & Runtime Production Checklist` — **COMPLETED**
+  - `14 - Hands-On Concurrency & Runtime Architecture Labs` — **COMPLETED**
+  - `15 - Production Incident Post-Mortem (ThreadPool Collapse)` — **COMPLETED**
+  - `16 - Principal Concurrency Architectural Defense Questions` — **COMPLETED**
+  - `17 - Principal Concurrency Technical Interview Scenarios` — **COMPLETED**
+  - `18 - Sprint 05 Executive Summary & Synthesis` — **COMPLETED**
+  - `19 - Curated CLR Runtime Resources & Source Code` — **COMPLETED**
+  - `Challenge 05` — **COMPLETED**
+  - `War Room Track (05-Concurrency-WarRoom/ Incidents 01-05)` — **COMPLETED**
+
 ### Immediate Next Sprint / Chapter
 
-- `04 - Database Performance & Relational Internals (Sprint 04)` — **NEXT**
+- `06 - Messaging & Background Processing (Sprint 06)` — **NEXT**
 
-Expected Sprint 04 coverage:
-- SQL Server & PostgreSQL Query Execution Plans (Index Seek vs Scan, Sort Spills)
-- B-Tree Index Strategies, Clustered/Non-Clustered, Covering & Filtered Indexes
-- Transaction Isolation Levels (Read Committed Snapshot Isolation - RCSI vs Serializable)
-- Deadlocks, Lock Escalation & Concurrency Control
-- Connection Pool Starvation & Client Driver Tuning
-- EF Core Interceptors, Split Queries, Compiled Models & High-Performance Dapper Projections
+Expected Sprint 06 coverage:
+- Outbox Pattern & At-Least-Once Delivery Guarantees
+- MassTransit / RabbitMQ / Azure Service Bus Architecture
+- Idempotent Message Consumers & Deduplication Strategies
+- Distributed Saga Orchestration vs Choreography
+- Dead-Letter Queues (DLQ) & Retry Policy Storm Prevention
 
 ---
 
