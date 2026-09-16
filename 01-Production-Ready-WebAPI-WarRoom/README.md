@@ -32,11 +32,11 @@ Each incident targets a cluster of core architectural competencies from the 27 s
 
 | Incident | Crisis Name | Core Competencies Covered | Standard Chapters Mapped |
 |---|---|---|---|
-| **Incident 01** | **[The Black Friday Liveness Death Spiral](01-Incident-Liveness-Death-Spiral.md)** | • Kubernetes/App Service Health Probes<br>• `SocketsHttpHandler` & DNS Refresh<br>• DI Captive Dependencies & Scope Trees | Ch 07, 08, 08A, 15, 15A, 19, 23 |
-| **Incident 02** | **[The 30GB Memory Leak & Exception Blizzard](02-Incident-Memory-Leak-Exception-Blizzard.md)** | • Zero-Allocation Structured Logging (`[LoggerMessage]`)<br>• Two-Pass CLR Exception Unwinding<br>• RFC 9457 `ProblemDetails` & Domain `Result<T>`<br>• Invariant Validation vs ReDoS | Ch 11, 11A, 12, 12A, 13, 16 |
-| **Incident 03** | **[The Silent Database Meltdown & 20-Minute Query](03-Incident-Database-Meltdown-Keyset-Pagination.md)** | • Keyset Pagination vs Offset `Skip/Take`<br>• ASP.NET Core Middleware Pipeline Mechanics<br>• Idempotency-Key & Distributed Double-Charge Defense | Ch 08, 08A, 14, 22 |
-| **Incident 04** | **[The Secret Leak & The Config Reload Phantom](04-Incident-Secret-Leak-Options-Phantom.md)** | • Configuration Providers & Layered Trees<br>• `IOptions` vs `IOptionsSnapshot` vs `IOptionsMonitor`<br>• Azure Key Vault & Zero-Trust Secrets<br>• `IChangeToken` GC Memory Leaks | Ch 09, 09A, 10, 10A, 20 |
-| **Incident 05** | **[The Monolith Architectural Rot & PR Gauntlet](05-Incident-Architectural-Rot-PR-Gauntlet.md)** | • Clean Architecture Boundary Inversion<br>• SOLID at Enterprise Scale<br>• API Versioning Lifecycle (RFC 8594 Sunset)<br>• Architecture Decision Records (ADR) & PR Governance | Ch 04, 05, 06, 17, 18, 21, 24, 25, 26 |
+| **Incident 01** | **[The Black Friday Liveness Death Spiral](01-Incident-Liveness-Death-Spiral.md)** | • Kubernetes/App Service Health Probes, `SocketsHttpHandler` & DNS Refresh, DI Captive Dependencies & Scope Trees | Ch 07, 08, 08A, 15, 15A, 19, 23 |
+| **Incident 02** | **[The 30GB Memory Leak & Exception Blizzard](02-Incident-Memory-Leak-Exception-Blizzard.md)** | • Zero-Allocation Structured Logging (`[LoggerMessage]`), Two-Pass CLR Exception Unwinding, RFC 9457 `ProblemDetails` & Domain `Result<T>`, Invariant Validation vs ReDoS | Ch 11, 11A, 12, 12A, 13, 16 |
+| **Incident 03** | **[The Silent Database Meltdown & 20-Minute Query](03-Incident-Database-Meltdown-Keyset-Pagination.md)** | • Keyset Pagination vs Offset `Skip/Take`, ASP.NET Core Middleware Pipeline Mechanics, Idempotency-Key & Distributed Double-Charge Defense | Ch 08, 08A, 14, 22 |
+| **Incident 04** | **[The Secret Leak & The Config Reload Phantom](04-Incident-Secret-Leak-Options-Phantom.md)** | • Configuration Providers & Layered Trees, `IOptions` vs `IOptionsSnapshot` vs `IOptionsMonitor`, Azure Key Vault & Zero-Trust Secrets, `IChangeToken` GC Memory Leaks | Ch 09, 09A, 10, 10A, 20 |
+| **Incident 05** | **[The Monolith Architectural Rot & PR Gauntlet](05-Incident-Architectural-Rot-PR-Gauntlet.md)** | • Clean Architecture Boundary Inversion, SOLID at Enterprise Scale, API Versioning Lifecycle (RFC 8594 Sunset), Architecture Decision Records (ADR) & PR Governance | Ch 04, 05, 06, 17, 18, 21, 24, 25, 26 |
 
 ---
 

@@ -1,6 +1,0 @@
-- Scalability
-- Caching
-- Load Balancing
-- Rate Limiting
-- Database Sharding
-- Trade-offs

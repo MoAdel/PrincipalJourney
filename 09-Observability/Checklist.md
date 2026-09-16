@@ -1,4 +1,0 @@
-- Read
-- Lab
-- Review
-- Summarize

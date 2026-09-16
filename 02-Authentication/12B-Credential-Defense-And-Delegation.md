@@ -28,9 +28,9 @@ A Principal Engineer selects between memory-hard, tuned Key Derivation Functions
 ```mermaid
 graph TD
     subgraph KDF_Comparison["Modern Password Storage Standards (RFC 9106)"]
-        Argon2id["Argon2id (Recommended Standard)<br/>• Memory-Hard (Defeats GPU/ASIC parallel attacks)<br/>• Hybrid data-dependent & data-independent passes<br/>• Resilient against side-channel cache attacks"]
-        Bcrypt["Bcrypt (Legacy Standard)<br/>• Based on Blowfish key setup (Eksblowfish)<br/>• CPU-bound with configurable cost factor (Salt Rounds)<br/>• Vulnerable to FPGA optimization at high scale"]
-        PBKDF2["PBKDF2-HMAC-SHA256 (NIST / FIPS Compliant)<br/>• Simple iterated HMAC (e.g., 600,000 rounds)<br/>• GPU-accelerated; requires very high iteration count"]
+        Argon2id["Argon2id (Recommended Standard)\n- Memory-Hard (Defeats GPU/ASIC parallel attacks)\n- Hybrid data-dependent & independent passes\n- Resilient against side-channel cache attacks"]
+        Bcrypt["Bcrypt (Legacy Standard)\n- Based on Blowfish key setup (Eksblowfish)\n- CPU-bound with configurable cost factor\n- Vulnerable to FPGA optimization at high scale"]
+        PBKDF2["PBKDF2-HMAC-SHA256 (NIST / FIPS Compliant)\n- Simple iterated HMAC (e.g., 600,000 rounds)\n- GPU-accelerated; requires very high iteration count"]
     end
 ```
 

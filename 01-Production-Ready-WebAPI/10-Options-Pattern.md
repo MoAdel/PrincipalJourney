@@ -261,7 +261,7 @@ Fail Fast.
 
 ---
 
-# IOptions<T>
+# `IOptions<T>`
 
 ```
 Singleton
@@ -289,7 +289,7 @@ Fixed Limits
 
 ---
 
-# IOptionsSnapshot<T>
+# `IOptionsSnapshot<T>`
 
 Think
 
@@ -321,7 +321,7 @@ Scoped lifetime.
 
 ---
 
-# IOptionsMonitor<T>
+# `IOptionsMonitor<T>`
 
 Think
 

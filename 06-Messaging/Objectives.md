@@ -1,7 +1,0 @@
-- Azure Queue
-- Azure Service Bus
-- Worker Services
-- Retry
-- Dead Letter Queue
-- Idempotency
-- Outbox Pattern

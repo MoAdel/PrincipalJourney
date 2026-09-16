@@ -155,8 +155,8 @@ Files ending in `A` represent deeper framework/runtime investigations.
 Completed examples:
 
 - `08A - Inside the ASP.NET Core Pipeline`
-- `09A - Configuration Providers Internals`
-- `10A - The Options Ecosystem`
+- `09A - Inside Configuration Providers Internals`
+- `10A - Inside The Options Ecosystem`
 
 These chapters should investigate:
 
@@ -523,16 +523,74 @@ Always explain failure modes.
   - `Challenge 05` — **COMPLETED**
   - `War Room Track (05-Concurrency-WarRoom/ Incidents 01-05)` — **COMPLETED**
 
-### Immediate Next Sprint / Chapter
+### Ready Sprints / Immediate Next Sprint
 
-- `06 - Messaging & Background Processing (Sprint 06)` — **NEXT**
+- `06 - Messaging & Background Processing (Sprint 06)` — **READY FOR STUDY**
+  - Fully scaffolded 23-chapter curriculum in `06-Messaging/`
+  - Transactional Outbox Pattern with `UPDLOCK, READPAST` & `SKIP LOCKED`
+  - AMQP 1.0 Credit-Based Flow Control & Prefetch Tuning
+  - Idempotent Consumer & Deduplication Engine (Inbox Pattern)
+  - Dead-Letter Queues (DLQ) & Exponential Jitter Backoff
+  - Distributed Sagas with MassTransit Automatonymous State Machines
+  - In-Memory Backpressure with `System.Threading.Channels`
+  - Large Message Offloading via the Claim Check Pattern
+  - Curated Formal Specifications (OASIS AMQP 1.0, CloudEvents v1.0.2, Hohpe EIP)
 
-Expected Sprint 06 coverage:
-- Outbox Pattern & At-Least-Once Delivery Guarantees
-- MassTransit / RabbitMQ / Azure Service Bus Architecture
-- Idempotent Message Consumers & Deduplication Strategies
-- Distributed Saga Orchestration vs Choreography
-- Dead-Letter Queues (DLQ) & Retry Policy Storm Prevention
+- `07 - Distributed Systems Architecture (Sprint 07)` — **READY FOR STUDY**
+  - Fully scaffolded 23-chapter curriculum in `07-Distributed-Systems/`
+  - Formal proofs of Brewer's CAP Theorem (Gilbert & Lynch) & Abadi's PACELC
+  - Distributed Consensus Engine Mechanics (Raft, Paxos, Quorum $Q = \lfloor N/2 \rfloor + 1$)
+  - Redis Reactor Event-Loop (`ae.c`), Eviction Policies, and 16,384 Hash Slots
+  - Probabilistic Early Expiration (XFetch Algorithm) for Cache Stampede Elimination
+  - Redlock Distributed Locking, GC Stalls, and Monotonic Fencing Tokens
+  - Conflict-Free Replicated Data Types (PN-Counter, ORSet Join-Semilattices)
+  - Polly v8 Zero-Allocation Resilience Pipelines & Distributed Rate Limiting (Redis Lua)
+  - Curated Formal Research Papers (Brewer, Abadi, Lamport, Kleppmann, Shapiro, Vattani)
+
+- `08 - Cloud Native Azure Architecture (Sprint 08)` — **READY FOR STUDY**
+  - Fully scaffolded 22-chapter curriculum in `08-Cloud-Native/`
+  - Enterprise Hub-and-Spoke Virtual Network Topology & Zero-Trust Ingress
+  - Azure Container Apps (ACA) vs AKS vs App Service Decision Framework
+  - KEDA Control Loops, Envoy Sidecar mTLS, and Scale-to-Zero Cold Starts
+  - Azure Functions v4 Isolated Worker (.NET 9 C# 13) with Flex Consumption & VNet Integration
+  - Durable Task Framework (DTFx) Internals: Replay Execution, Determinism Rules & Saga Compensation
+  - Azure API Management (APIM) Enterprise Policies, JWT Introspection & Sliding-Window Rate Limiting
+  - Azure Front Door Premium Global Edge Anycast Routing & Managed WAF
+  - Azure Private Endpoints & Split-Horizon Private DNS Zones
+  - Managed Identities Everywhere & Azure Key Vault Managed HSM (Zero Secret Footprint)
+  - Modular Enterprise Bicep IaC with Tenant-Scoped Deployments
+  - FinOps Cost Engineering: Unit Economics, Egress Audits & Automated Billing Anomaly Guardrails
+  - Curated Formal Specifications (Microsoft WAF, NIST SP 800-207, CNCF, FinOps Foundation)
+
+- `09 - Advanced Observability & Telemetry (Sprint 09)` — **READY FOR STUDY**
+  - Fully scaffolded 22-chapter curriculum in `09-Observability/`
+  - OpenTelemetry .NET 9 SDK Architecture, TracerProvider, MeterProvider & Resource Detectors
+  - CLR Internals: `DiagnosticSource`, `ActivitySource`, `Activity`, AsyncLocal Context Flow
+  - W3C TraceContext (`traceparent`, `tracestate`), Baggage & Distributed Cross-Service Propagation
+  - CLR Metrics Internals: `Meter`, Counter/Histogram Buckets & Lock-Free Thread-Local Accumulators
+  - Compile-Time Zero-Allocation Structured Logging with `[LoggerMessage]` Source Generators
+  - OpenTelemetry Collector Pipelines (`memory_limiter`, `batch`, `tail_sampling`, PII Masking)
+  - High-Cardinality TSDB Inverted Index Mechanics, Posting Lists & Telemetry FinOps
+  - Google SRE Mathematical Foundations of SLIs, SLOs & Error Budget Freeze Policies
+  - Multi-Window Multi-Burn-Rate Alerting Architecture (14.4x/6x/1x PromQL Alerting Rules)
+  - Grafana RED and USE Visualization Patterns with Exemplar-to-Trace Navigation
+  - Curated Formal Specifications (W3C, OpenTelemetry, Google SRE, Microsoft .NET Diagnostics)
+
+- `10 - Large-Scale System Design (Sprint 10)` — **READY FOR STUDY**
+  - Fully scaffolded 23-chapter curriculum in `10-System-Design/`
+  - Back-of-the-Envelope Capacity Modeling (RPS, Bandwidth Gbps, Storage TB/yr, Memory 80/20)
+  - The Principal 5-Stage System Design Framework & Trade-Off Methodology
+  - Database Partitioning & Sharding Architecture: Consistent Hashing with Virtual Nodes
+  - Distributed Transactions: Two-Phase Commit (2PC) Blocking Lock Pitfalls vs Orchestrated Sagas & Outbox
+  - Multi-Tier Caching Topology (L1/L2/L3), Cache Invalidation & Single-Flight Stampede Defense
+  - Storage Internals: Consensus, Quorums ($R+W>N$), Dynamo-Style Replication, Merkle Trees
+  - Rate Limiting & Traffic Shaping: Sliding-Window Redis Lua Limiters, Little's Law Concurrency Limits
+  - Asynchronous Event-Driven Architectures: Kafka vs RabbitMQ, Partition Ordering, Bounded Channels
+  - 4 Landmark Production Case Studies: Global E-Commerce Flash Sale (100k RPS), Real-Time 50M User Notification Engine, 500k RPS Financial Telemetry Ingestion, and Distributed Video Streaming CDN
+  - Architecture Decision Records (ADR) Mastery & Michael Nygard Governance in Git
+  - Curated Landmark Distributed Systems Research Papers (GFS, Dynamo, Bigtable, Spanner, Raft)
+
+- `11 - Principal Architecture Review & Governance (Sprint 11)` — **NEXT**
 
 ---
 

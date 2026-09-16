@@ -32,17 +32,17 @@ graph TD
     end
 
     subgraph Boundaries["Dual-Rail Transport Security Boundaries"]
-        RailA["Rail A: BFF / Cookie Boundary<br/>• HttpOnly, Secure, SameSite=Lax/Strict<br/>• Anti-CSRF Token Validation<br/>• Inaccessible to JavaScript (Immune to XSS token theft)"]
-        RailB["Rail B: Bearer Token Boundary<br/>• Authorization: Bearer &lt;JWT&gt;<br/>• Cryptographic Refresh Token Rotation<br/>• Stored in Secure Enclave / KeyStore"]
+        RailA["Rail A: BFF / Cookie Boundary\n- HttpOnly, Secure, SameSite=Lax/Strict\n- Anti-CSRF Token Validation\n- Inaccessible to JavaScript (Immune to XSS)"]
+        RailB["Rail B: Bearer Token Boundary\n- Authorization: Bearer JWT\n- Cryptographic Refresh Token Rotation\n- Stored in Secure Enclave / KeyStore"]
     end
 
     subgraph Gateway["API Gateway / ASP.NET Core Core Pipeline"]
-        AuthMiddleware["Authentication Middleware<br/>(Composite Scheme Evaluator)"]
+        AuthMiddleware["Authentication Middleware\n(Composite Scheme Evaluator)"]
     end
 
     subgraph Backend["Zero-Trust Microservices & SignalR Hubs"]
         ApiEndpoints["REST / Minimal APIs"]
-        SignalRHub["SignalR Real-Time Hub<br/>(Room & Tenant Isolation)"]
+        SignalRHub["SignalR Real-Time Hub\n(Room & Tenant Isolation)"]
     end
 
     WebClient -->|Rail A| RailA --> AuthMiddleware

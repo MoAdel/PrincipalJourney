@@ -1,0 +1,5 @@
+file 'D:/Library/Technical/PrincipalJourney/01-Production-Ready-WebAPI-WarRoom/Movie-Production-Suite/temp/scene_01_clip.mp4'
+file 'D:/Library/Technical/PrincipalJourney/01-Production-Ready-WebAPI-WarRoom/Movie-Production-Suite/temp/scene_02_clip.mp4'
+file 'D:/Library/Technical/PrincipalJourney/01-Production-Ready-WebAPI-WarRoom/Movie-Production-Suite/temp/scene_03_clip.mp4'
+file 'D:/Library/Technical/PrincipalJourney/01-Production-Ready-WebAPI-WarRoom/Movie-Production-Suite/temp/scene_04_clip.mp4'
+file 'D:/Library/Technical/PrincipalJourney/01-Production-Ready-WebAPI-WarRoom/Movie-Production-Suite/temp/scene_05_clip.mp4'

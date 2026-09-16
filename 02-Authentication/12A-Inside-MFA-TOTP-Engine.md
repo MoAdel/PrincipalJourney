@@ -133,11 +133,11 @@ sequenceDiagram
     API->>DB: Verify Password Hash (Argon2id/Bcrypt)
     DB-->>API: Password OK, MfaEnabled = true
     Note over API: DO NOT ISSUE ACCESS TOKEN!
-    API->>API: Generate Ephemeral MfaChallenge Token<br/>(Signed JWT or Encrypted Cookie, TTL: 5 minutes)
+    API->>API: Generate Ephemeral MfaChallenge Token\n(Signed JWT or Encrypted Cookie, TTL: 5 minutes)
     API-->>App: 200 OK + { status: "MFA_REQUIRED", challengeToken: "eyJhb..." }
 
     User->>App: Opens Authenticator App, Enters 6-digit Code ("849201")
-    App->>API: POST /api/v1/auth/mfa-verify<br/>Header: X-MFA-Challenge: eyJhb...<br/>Body: { code: "849201" }
+    App->>API: POST /api/v1/auth/mfa-verify (Header: X-MFA-Challenge, Body: code=849201)
     API->>API: 1. Validate Challenge Token (Unexpired, type="mfa_challenge")
     API->>DB: 2. Atomic Step Verification (totpLastStep < currentStep)
     DB-->>API: 1 Row Updated (Step Recorded)

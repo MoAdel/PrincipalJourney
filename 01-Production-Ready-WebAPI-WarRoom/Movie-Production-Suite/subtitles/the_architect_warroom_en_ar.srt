@@ -1,0 +1,144 @@
+1
+00:00:01,000 --> 00:00:05,500
+[03:02 AM — Black Friday Flash Sale]
+[الساعة 03:02 فجراً — عاصفة خصومات البلاك فرايداي]
+
+2
+00:00:06,000 --> 00:00:10,000
+ELENA: We just lost cluster East-1! Pods are dropping offline!
+إيلينا: كلاستر الشرق بالكامل بيسقط! البودات بتقفل ورا بعض!
+
+3
+00:00:10,500 --> 00:00:14,800
+ELENA: Ingress is throwing 503! I'm scaling replicas to 200!
+إيلينا: الـ Ingress بدأ يرمي 503 للناس كلها! هرفع البودات لـ 200 بود فوراً!
+
+4
+00:00:15,200 --> 00:00:19,500
+MARCUS: Elena! 80,000 active checkout carts are frozen right now!
+ماركوس: يا إيلينا! تمانين ألف سلة شراء متجمدة في السيرفرات دلوقتي!
+
+5
+00:00:20,000 --> 00:00:24,200
+TAREK: Elena, abort that command. Do not scale.
+طارق: إيلينا.. وقفي الأمر فوراً. اوعي تزودي عدد البودات.
+
+6
+00:00:25,000 --> 00:00:30,000
+TAREK: If you spin up 140 cold pods, you will vaporize the PostgreSQL connection pool!
+طارق: لو شغّلتي 140 بود جديد، هتحرقي مجمع اتصالات قاعدة البيانات بالكامل!
+
+7
+00:00:30,500 --> 00:00:36,500
+TAREK: Who registered the database check inside the liveness endpoint in Program.cs?
+طارق: مين اللي حط فحص قاعدة البيانات جوة مسار الـ Liveness في كود Program.cs؟
+
+8
+00:00:37,000 --> 00:00:43,000
+OMAR: I used 'check => true'. I thought Kubernetes would give it a clean reboot...
+عمر: أنا حطيت check => true.. كنت فاكر كوبرنيتس هيرستر البود ويبدأ من جديد بنظافة...
+
+9
+00:00:43,500 --> 00:00:49,000
+TAREK: That is the Liveness Death Spiral! If SQL is slow, your process isn't dead—it's just waiting!
+طارق: دي دوامة الموت الذاتي! لو الداتابيز بطيئة السيرفر مش ميت.. هو بس مستني الرد!
+
+10
+00:00:49,500 --> 00:00:55,500
+TAREK: Liveness is pure in-memory. Downstream database stalls must only fail Readiness!
+طارق: الـ Liveness فحص داخلي في الميموري فقط. وبطء الداتابيز يفشل الـ Readiness بس!
+
+11
+00:00:57,000 --> 00:01:02,000
+[Incident 02: The 30GB Memory Leak & Exception Blizzard]
+[الحادث 02: تسريب الـ 30 جيجا بايت وعاصفة الاستثناءات]
+
+12
+00:01:03,000 --> 00:01:08,200
+ELENA: Latency hit 4.8 seconds! Every thread is frozen in Gen 2 Garbage Collection!
+إيلينا: الـ Latency وصلت 4.8 ثانية! كل الثريدات متجمدة بسبب الـ Gen 2 Garbage Collection!
+
+13
+00:01:09,000 --> 00:01:14,000
+OMAR: We're throwing OutOfMemoryException! Where is 30 Gigabytes coming from?!
+عمر: بيجيلنا OutOfMemoryException! التلاتين جيجا دي بتيجي منين؟!
+
+14
+00:01:14,500 --> 00:01:21,500
+TAREK: String interpolation in the hot path. You're allocating 1.2 GB of garbage strings every 2 seconds!
+طارق: دمج النصوص في المسار السريع بيرمي جيجا و200 ميجا زبالة في الذاكرة كل ثانيتين!
+
+15
+00:01:22,000 --> 00:01:29,000
+TAREK: And exceptions cost 8,000 CPU cycles to unwind stack frames! Use Domain Result<T>!
+طارق: والاستثناءات بتستهلك 8 آلاف لفة معالج عشان تفك الـ Stack! استخدموا Domain Result<T>!
+
+16
+00:01:31,000 --> 00:01:36,000
+[Incident 03: The Silent Database Meltdown — Keyset Pagination]
+[الحادث 03: انهيار قاعدة البيانات وكارثة الصفحة 15,000]
+
+17
+00:01:37,000 --> 00:01:43,000
+MARCUS: Customers tapped 'Pay' once and got charged THREE times! $1.2M in chargebacks!
+ماركوس: العملاء داسوا 'دفع' مرة واحدة واتخصم 3 مرات! إحنا داخلين في غرامات بمليون وميتين ألف دولار!
+
+18
+00:01:43,500 --> 00:01:49,500
+ELENA: Disk IOPS maxed out at 20,000! A crawler requested OFFSET 750,000!
+إيلينا: قراءة الهارد قفلت الحد الأقصى! في بوت بيسحب أوردرات بـ OFFSET 750,000!
+
+19
+00:01:50,000 --> 00:01:57,000
+TAREK: OFFSET reads and discards 750,000 rows into tempdb! Keyset seek makes it an instant O(1) seek!
+طارق: أمر OFFSET بيقرأ 750 ألف سطر ويرميهم! الـ Keyset بيحولها لـ O(1) Seek فوري في كسر من الثانية!
+
+20
+00:01:57,500 --> 00:02:04,500
+TAREK: And protect checkout with Idempotency-Key in Redis. Zero duplicate charges forever.
+طارق: واحموا الدفع بـ Idempotency-Key وقفل موزع في Redis.. زيرو خصم متكرر للأبد.
+
+21
+00:02:06,000 --> 00:02:11,000
+[Incident 04: The Secret Leak & Captive Options Phantom]
+[الحادث 04: تسريب الأسرار وفخ الـ Singleton]
+
+22
+00:02:12,000 --> 00:02:18,000
+ELENA: Our background worker crashed! Someone injected IOptionsSnapshot into a Singleton!
+إيلينا: معالج الخلفية مات! حد حقن IOptionsSnapshot جوة سيرفيس Singleton!
+
+23
+00:02:18,500 --> 00:02:26,000
+TAREK: IOptionsSnapshot requires an HTTP scope. Use IOptionsMonitor to hot-reload rotated secrets seamlessly!
+طارق: الـ IOptionsSnapshot محتاجة HTTP Scope.. استخدموا IOptionsMonitor عشان تحدثوا الأسرار على الهواء!
+
+24
+00:02:28,000 --> 00:02:33,000
+[Incident 05: The Architectural Gatekeeper]
+[الحادث 05: حائط الصد المعماري]
+
+25
+00:02:34,000 --> 00:02:40,000
+ELENA: 05:45 AM. Latency is 18ms. $48 Million processed. Zero dropped packets!
+إيلينا: الساعة 5:45 صباحاً.. الـ Latency نزلت لـ 18ms! اتعالج 48 مليون دولار وزيرو طلبات سقطت!
+
+26
+00:02:41,000 --> 00:02:47,000
+OMAR: Marketing wants a quick 5% discount rule in the Order entity. Can I merge PR #1402?
+عمر: الماركتنج طالبين خصم 5% سريع جوة كلاس الأوردر.. كل التيستات خضرا، أدوس Merge؟
+
+27
+00:02:47,500 --> 00:02:54,500
+TAREK: Stop! You leaked HttpContext into the core Domain. Architectural rot begins with 'just one shortcut'.
+طارق: اقف مكانك! سرّبت كود الويب جوة الـ Domain! عفن المعمارية بيبدأ بـ 'كرواتة سريعة' واحدة تحت الضغط.
+
+28
+00:02:55,000 --> 00:03:02,000
+TAREK: Automated architecture tests never sleep. Protect the core, and the system will protect you.
+طارق: الحواجز المعمارية المؤتمتة مش بتنام أبداً.. احمي قلب السيستم، والسيستم هيحميك.
+
+29
+00:03:03,000 --> 00:03:10,000
+[True resilience is not surviving the outage. It is making the outage physically impossible.]
+[الصلابة الحقيقية ليست النجاة من العطل.. بل جعله مستحيلاً فيزيائياً.]

@@ -1,1 +1,0 @@
-Implement a focused lab for each topic.

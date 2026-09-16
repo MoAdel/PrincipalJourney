@@ -1,6 +1,0 @@
-- CAP Theorem
-- Pub/Sub
-- Saga
-- Outbox
-- Idempotency
-- CQRS Basics
