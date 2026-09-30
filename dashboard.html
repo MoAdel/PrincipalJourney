@@ -432,6 +432,38 @@
             color: var(--accent-rose);
         }
 
+        .btn-sprint-unlock {
+            border-color: rgba(16, 185, 129, 0.5) !important;
+            color: var(--accent-emerald) !important;
+            background: rgba(16, 185, 129, 0.12) !important;
+            font-weight: 700 !important;
+        }
+
+        .btn-sprint-unlock:hover {
+            background: var(--accent-emerald) !important;
+            color: #0b0f19 !important;
+            box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-sprint-relock {
+            border-color: rgba(244, 63, 94, 0.4) !important;
+            color: var(--accent-rose) !important;
+            background: rgba(244, 63, 94, 0.1) !important;
+        }
+
+        .btn-sprint-relock:hover {
+            background: var(--accent-rose) !important;
+            color: #fff !important;
+            box-shadow: 0 0 12px rgba(244, 63, 94, 0.4);
+        }
+
+        .btn-free-roam-active {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.25), rgba(6, 182, 212, 0.25)) !important;
+            border-color: var(--accent-emerald) !important;
+            color: #a7f3d0 !important;
+            box-shadow: 0 0 14px rgba(16, 185, 129, 0.35);
+        }
+
         .tag-completed {
             background: rgba(16, 185, 129, 0.15);
             color: var(--accent-emerald);
@@ -598,13 +630,13 @@
         }
 
         .sprint-block.sprint-locked {
-            opacity: 0.55;
-            filter: grayscale(0.4);
+            opacity: 0.72;
+            filter: grayscale(0.25);
         }
 
         .sprint-block.sprint-locked .sprint-header-row {
             pointer-events: auto;
-            cursor: not-allowed;
+            cursor: pointer;
         }
 
         .lock-badge {
@@ -615,6 +647,21 @@
             font-weight: 800;
             padding: 3px 10px;
             border-radius: 20px;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            transition: all 0.2s ease;
+        }
+
+        .lock-badge.clickable {
+            cursor: pointer;
+        }
+
+        .lock-badge.clickable:hover {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-emerald);
+            border-color: var(--accent-emerald);
+            transform: translateY(-1px);
         }
 
         .phase-progress-row {
@@ -779,7 +826,19 @@
 
         .campaign-node.node-complete { border-color: var(--accent-emerald); background: rgba(16, 185, 129, 0.05); }
         .campaign-node.node-active { border-color: var(--accent-blue); box-shadow: 0 0 20px rgba(59, 130, 246, 0.25); }
-        .campaign-node.node-locked { opacity: 0.45; cursor: not-allowed; filter: grayscale(0.5); }
+        .campaign-node.node-locked { 
+            opacity: 0.55; 
+            cursor: pointer; 
+            filter: grayscale(0.4); 
+            transition: all 0.2s ease;
+        }
+        .campaign-node.node-locked:hover {
+            opacity: 0.9;
+            filter: grayscale(0);
+            border-color: rgba(16, 185, 129, 0.6);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(16, 185, 129, 0.2);
+        }
 
         .node-number { font-family: 'Fira Code', 'Cascadia Code', Consolas, 'Courier New', monospace; font-size: 0.75rem; color: var(--accent-cyan); font-weight: 700; }
         .node-title { font-size: 1rem; font-weight: 800; margin: 6px 0; }
@@ -1226,6 +1285,9 @@
                     </div>
                     <button class="btn" onclick="openAchievementsModal()" title="View unlocked achievements">
                         🏆 Achievements
+                    </button>
+                    <button class="btn" id="btnToggleFreeRoam" onclick="toggleFreeRoamMode()" title="Toggle Free Roam mode to unlock all sprints simultaneously for flexible learning">
+                        🌐 Free Roam: <strong>OFF</strong>
                     </button>
                     <button class="btn" onclick="uncheckAllTopics()" title="Reset all checkboxes across all sprints to pending">
                         ✕ Uncheck All Topics
@@ -1906,7 +1968,9 @@
                 lastStudyDate: null,
                 dailyMissionDate: null,
                 dailyMissionCompleted: false,
-                sprintBonusesAwarded: []
+                sprintBonusesAwarded: [],
+                manuallyUnlockedSprints: [],
+                freeRoamMode: false
             }
         };
 
@@ -1957,8 +2021,55 @@
 
         function ensureGameState() {
             if (!studentState.game) {
-                studentState.game = { totalXp: 0, questProgress: {}, unlockedAchievements: [], lastStudyDate: null, dailyMissionDate: null, dailyMissionCompleted: false, sprintBonusesAwarded: [] };
+                studentState.game = { 
+                    totalXp: 0, 
+                    questProgress: {}, 
+                    unlockedAchievements: [], 
+                    lastStudyDate: null, 
+                    dailyMissionDate: null, 
+                    dailyMissionCompleted: false, 
+                    sprintBonusesAwarded: [],
+                    manuallyUnlockedSprints: [],
+                    freeRoamMode: false
+                };
             }
+            if (!Array.isArray(studentState.game.manuallyUnlockedSprints)) {
+                studentState.game.manuallyUnlockedSprints = [];
+            }
+            if (studentState.game.freeRoamMode === undefined) {
+                studentState.game.freeRoamMode = false;
+            }
+        }
+
+        function toggleManualSprintUnlock(sprintId, event) {
+            if (event) event.stopPropagation();
+            ensureGameState();
+            const idx = studentState.game.manuallyUnlockedSprints.indexOf(sprintId);
+            if (idx >= 0) {
+                studentState.game.manuallyUnlockedSprints.splice(idx, 1);
+            } else {
+                studentState.game.manuallyUnlockedSprints.push(sprintId);
+            }
+            saveStudentState();
+            renderAll();
+        }
+
+        function toggleFreeRoamMode() {
+            ensureGameState();
+            studentState.game.freeRoamMode = !studentState.game.freeRoamMode;
+            saveStudentState();
+            renderAll();
+        }
+
+        function updateFreeRoamButton() {
+            const btn = document.getElementById("btnToggleFreeRoam");
+            if (!btn) return;
+            const isFree = studentState.game && studentState.game.freeRoamMode;
+            btn.innerHTML = isFree ? "🌐 Free Roam: <strong>ON</strong>" : "🌐 Free Roam: <strong>OFF</strong>";
+            btn.classList.toggle("btn-free-roam-active", !!isFree);
+            btn.title = isFree 
+                ? "Free Roam Mode is ON: All 12 sprints are unlocked for parallel learning. Click to switch back to Sequential waterfall." 
+                : "Sequential Mode is ON: Sprints unlock sequentially as previous sprints finish (or when individually unlocked). Click to unlock all 12 sprints at once.";
         }
 
         function getItemXp(item) {
@@ -1983,7 +2094,9 @@
         }
 
         function isSprintUnlocked(sprintId) {
+            if (studentState.game && studentState.game.freeRoamMode) return true;
             if (sprintId === 1) return true;
+            if (studentState.game && studentState.game.manuallyUnlockedSprints && studentState.game.manuallyUnlockedSprints.includes(sprintId)) return true;
             return isSprintComplete(sprintId - 1);
         }
 
@@ -2167,11 +2280,19 @@
 
                 const node = document.createElement("div");
                 node.className = `campaign-node ${isComplete ? 'node-complete' : ''} ${isActive ? 'node-active' : ''} ${!unlocked ? 'node-locked' : ''}`;
+                node.title = !unlocked ? "Click to unlock this sprint" : "Click to view sprint chapters";
                 node.onclick = () => {
                     if (unlocked) {
                         setViewMode("sprints");
                         const block = document.getElementById(`sprint-block-${sprint.sprintId}`);
                         if (block) { block.classList.remove("collapsed"); block.scrollIntoView({ behavior: "smooth" }); }
+                    } else {
+                        if (confirm(`Sprint ${sprint.sprintCode}: "${sprint.sprintTitle}" is currently locked.\n\nWould you like to unlock it now to explore its foundation and deep-dive chapters?`)) {
+                            toggleManualSprintUnlock(sprint.sprintId);
+                            setViewMode("sprints");
+                            const block = document.getElementById(`sprint-block-${sprint.sprintId}`);
+                            if (block) { block.classList.remove("collapsed"); block.scrollIntoView({ behavior: "smooth" }); }
+                        }
                     }
                 };
 
@@ -2181,8 +2302,14 @@
                     return `<div class="node-phase-dot ${phDone ? 'done' : ''} ${phActive ? 'current' : ''}" title="${ph.name}"></div>`;
                 }).join("");
 
+                const lockBadgeText = !unlocked 
+                    ? '🔒 (Click to unlock)' 
+                    : (studentState.game.manuallyUnlockedSprints && studentState.game.manuallyUnlockedSprints.includes(sprint.sprintId) && !studentState.game.freeRoamMode
+                        ? '🔓 Custom Unlocked' 
+                        : (isComplete ? '✅ Complete' : ''));
+
                 node.innerHTML = `
-                    <div class="node-number">${sprint.sprintCode} ${!unlocked ? '🔒' : isComplete ? '✅' : ''}</div>
+                    <div class="node-number">${sprint.sprintCode} ${lockBadgeText ? `&middot; <span style="font-size:0.75rem;">${lockBadgeText}</span>` : ''}</div>
                     <div class="node-title">${sprint.sprintTitle}</div>
                     <div style="font-size:0.78rem; color:var(--text-muted);">${done}/${total} quests &middot; ${pct.toFixed(0)}%</div>
                     <div class="node-progress-bar"><div class="node-progress-fill" style="width:${pct}%"></div></div>
@@ -2258,13 +2385,23 @@
         }
 
         async function openQuest(sprintId, itemId) {
-            if (!isSprintUnlocked(sprintId)) {
-                alert("🔒 This sprint is locked! Complete the previous sprint to unlock it.");
-                return;
-            }
             const sprint = studentState.curriculum.find(s => s.sprintId === sprintId);
             const item = sprint?.items.find(i => i.id === itemId);
             if (!item) return;
+
+            if (!isSprintUnlocked(sprintId)) {
+                const sName = sprint ? sprint.sprintCode : `Sprint ${sprintId}`;
+                if (confirm(`🔒 ${sName} is currently locked.\n\nWould you like to unlock this sprint now to start the quest "${item.title}"?`)) {
+                    ensureGameState();
+                    if (!studentState.game.manuallyUnlockedSprints.includes(sprintId)) {
+                        studentState.game.manuallyUnlockedSprints.push(sprintId);
+                    }
+                    saveStudentState();
+                    renderAll();
+                } else {
+                    return;
+                }
+            }
 
             activeQuest = { sprint, item };
             ensureGameState();
@@ -2506,6 +2643,7 @@
             updateSmartNextBanner();
             updateGameHud();
             updateDailyMission();
+            updateFreeRoamButton();
             if (currentViewMode === "map") renderCampaignMap();
         }
 
@@ -2612,6 +2750,9 @@
                     tagText = "In Progress";
                 }
 
+                const isManuallyUnlocked = studentState.game.manuallyUnlockedSprints && studentState.game.manuallyUnlockedSprints.includes(sprint.sprintId);
+                const isFreeRoam = studentState.game && studentState.game.freeRoamMode;
+
                 const sprintEl = document.createElement("div");
                 sprintEl.className = `sprint-block ${isFinished ? 'sprint-finished' : ''} ${isInProgress ? 'active-sprint' : ''} ${!unlocked ? 'sprint-locked' : ''} ${isFinished && sprint.sprintId > 3 ? 'collapsed' : ''}`;
                 sprintEl.id = `sprint-block-${sprint.sprintId}`;
@@ -2622,11 +2763,21 @@
                             <span class="sprint-code-pill">${sprint.sprintCode}</span>
                             <span class="sprint-name">${sprint.sprintTitle}</span>
                             <span class="sprint-progress-stat">(${sDone}/${sTotal} Quests)</span>
-                            ${!unlocked ? '<span class="lock-badge">🔒 Locked</span>' : ''}
+                            ${!unlocked 
+                                ? `<span class="lock-badge clickable" onclick="toggleManualSprintUnlock(${sprint.sprintId}, event)" title="Click to unlock this sprint and access its foundation topics immediately">🔒 Locked (Click to Unlock)</span>` 
+                                : (isManuallyUnlocked && !isFreeRoam 
+                                    ? `<span class="lock-badge" style="background:rgba(16,185,129,0.15); color:var(--accent-emerald); border-color:rgba(16,185,129,0.3);">🔓 Custom Unlocked</span>` 
+                                    : '')
+                            }
                         </div>
                         <div style="display: flex; align-items: center; gap: 8px;">
-                            ${unlocked ? `<button class="btn-sprint-action btn-sprint-check" onclick="checkSprint(${sprint.sprintId}, event)" title="Mark all quests in ${sprint.sprintCode} as done">✓ Check All</button>
-                            <button class="btn-sprint-action btn-sprint-uncheck" onclick="uncheckSprint(${sprint.sprintId}, event)" title="Reset all quests in ${sprint.sprintCode}">✕ Reset</button>` : ''}
+                            ${unlocked ? `
+                                <button class="btn-sprint-action btn-sprint-check" onclick="checkSprint(${sprint.sprintId}, event)" title="Mark all quests in ${sprint.sprintCode} as done">✓ Check All</button>
+                                <button class="btn-sprint-action btn-sprint-uncheck" onclick="uncheckSprint(${sprint.sprintId}, event)" title="Reset all quests in ${sprint.sprintCode}">✕ Reset</button>
+                                ${isManuallyUnlocked && !isFreeRoam ? `<button class="btn-sprint-action btn-sprint-relock" onclick="toggleManualSprintUnlock(${sprint.sprintId}, event)" title="Re-lock this sprint to sequential order">🔒 Re-lock</button>` : ''}
+                            ` : `
+                                <button class="btn-sprint-action btn-sprint-unlock" onclick="toggleManualSprintUnlock(${sprint.sprintId}, event)" title="Unlock ${sprint.sprintCode} to study foundation and core chapters now">🔓 Unlock Sprint</button>
+                            `}
                             <span class="sprint-status-tag ${tagClass}">${tagText}</span>
                             <span class="chevron-icon">▼</span>
                         </div>
@@ -2784,18 +2935,33 @@
         }
 
         function markAllSprintDonePrompt() {
-            const sprintNum = prompt("Enter the sprint number to jump/toggle (e.g. 1, 2, or 3):");
+            const sprintNum = prompt("Enter the sprint number to jump, unlock, or toggle (e.g. 1, 2, ..., 12):");
             if (sprintNum) {
                 const sId = parseInt(sprintNum);
                 const sprint = studentState.curriculum.find(s => s.sprintId === sId);
                 if (sprint) {
-                    const action = confirm(`Click OK to mark all items in ${sprint.sprintCode} as DONE, or Cancel to UNCHECK all items in this sprint.`) ? "done" : "pending";
-                    sprint.items.forEach(i => i.status = action);
-                    saveStudentState();
-                    renderAll();
-                    alert(`All items in ${sprint.sprintCode} updated to ${action.toUpperCase()}!`);
+                    const choice = prompt(`Sprint ${sprint.sprintCode} Actions:\n1: 🔓 Unlock this sprint (keep current chapter progress)\n2: ✓ Mark ALL items as DONE\n3: ✕ UNCHECK all items to PENDING\n\nEnter 1, 2, or 3:`, "1");
+                    ensureGameState();
+                    if (choice === "1") {
+                        if (!studentState.game.manuallyUnlockedSprints.includes(sId)) {
+                            studentState.game.manuallyUnlockedSprints.push(sId);
+                        }
+                        saveStudentState();
+                        renderAll();
+                        alert(`${sprint.sprintCode} is now unlocked! You can now access all its chapters and foundation topics.`);
+                    } else if (choice === "2") {
+                        sprint.items.forEach(i => i.status = "done");
+                        saveStudentState();
+                        renderAll();
+                        alert(`All items in ${sprint.sprintCode} updated to DONE!`);
+                    } else if (choice === "3") {
+                        sprint.items.forEach(i => i.status = "pending");
+                        saveStudentState();
+                        renderAll();
+                        alert(`All items in ${sprint.sprintCode} reset to PENDING!`);
+                    }
                 } else {
-                    alert("Sprint not found.");
+                    alert("Sprint not found. Please enter a valid sprint number between 1 and 12.");
                 }
             }
         }
