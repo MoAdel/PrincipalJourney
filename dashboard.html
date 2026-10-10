@@ -1277,7 +1277,7 @@
             <div class="header-main">
                 <div class="title-group">
                     <h1><span>🎮</span> Principal Engineer Quest</h1>
-                    <p>12-Sprint Campaign &middot; Complete phases, earn XP, unlock achievements, master every chapter</p>
+                    <p>14-Sprint Campaign &middot; Complete phases, earn XP, unlock achievements, master every chapter</p>
                 </div>
                 <div class="header-controls">
                     <div class="badge-streak" id="streakCounterBadge">
@@ -1384,9 +1384,9 @@
             </div>
             <div class="metric-card">
                 <div class="metric-label">Completed Sprints</div>
-                <div class="metric-value" id="valSprintsDone">0 / 12</div>
+                <div class="metric-value" id="valSprintsDone">0 / 14</div>
                 <div style="font-size: 0.78rem; color: var(--accent-cyan); font-weight: 600; margin-top: 4px;">
-                    12-Sprint Roadmap
+                    14-Sprint Roadmap
                 </div>
             </div>
             <div class="metric-card">
@@ -1647,6 +1647,7 @@
                     { id: "s2-04", title: "04 - Zero-Trust API Security Architecture", path: "02-Authentication/04-Security-Architecture.md", status: "done", note: "End-to-end zero-trust request processing blueprint." },
                     { id: "s2-05", title: "05 - OAuth 2.0 & OpenID Connect Architecture", path: "02-Authentication/05-OAuth2-Architecture.md", status: "done", note: "Auth Code + PKCE for SPAs/Mobile; Client Credentials for daemons; BFF pattern." },
                     { id: "s2-05a", title: "05A - Inside OAuth 2.0 & OIDC Protocol Internals", path: "02-Authentication/05A-Inside-OAuth2-OIDC-Internals.md", status: "done", note: ".well-known/openid-configuration & JWKS discovery mechanics." },
+                    { id: "s2-05b", title: "05B - Inside OAuth 2.0 Device Code Flow (RFC 8628)", path: "02-Authentication/05B-OAuth2-Device-Code-Flow-Internals.md", status: "done", note: "Out-of-band authorization for CLI tools, IoT, and headless devices." },
                     { id: "s2-06", title: "06 - JSON Web Tokens (JWT) Cryptographic Internals", path: "02-Authentication/06-JWT-Crypto-Internals.md", status: "done", note: "Asymmetric RS256 vs symmetric HS256 blast radius; alg:none defense." },
                     { id: "s2-06a", title: "06A - Inside the JWT Validation Pipeline", path: "02-Authentication/06A-Inside-Jwt-Validation-Pipeline.md", status: "done", note: "JsonWebTokenHandler vs JwtSecurityTokenHandler; OS native SHA-256/RSA." },
                     { id: "s2-07", title: "07 - Claims-Based & Policy-Based Authorization", path: "02-Authentication/07-Claims-And-Policy-Authorization.md", status: "done", note: "IAuthorizationRequirement + AuthorizationHandler<T> decoupling." },
@@ -1720,6 +1721,7 @@
                     { id: "s4-10", title: "10 - EF Core Advanced Performance (Split Queries & Models)", path: "04-Database/10-EFCore-Advanced-Performance.md", status: "done", note: "Cartesian explosion elimination via AsSplitQuery(), Compiled Models (dotnet ef dbcontext optimize)." },
                     { id: "s4-11", title: "11 - Dapper Micro-ORM & CQRS Read Optimization", path: "04-Database/11-Dapper-MicroORM-Optimization.md", status: "done", note: "CQRS split, Dynamic IL emit deserialization, unbuffered streaming, and Postgres Binary COPY." },
                     { id: "s4-12", title: "12 - Table Partitioning & Sliding Window Archival", path: "04-Database/12-Partitioning-Sharding-Strategies.md", status: "done", note: "Partition pruning, sliding window metadata switching (ALTER TABLE SWITCH), and sharding boundaries." },
+                    { id: "s4-12a", title: "12A - Materialized Views vs Views & Refresh Strategies", path: "04-Database/12A-Materialized-Views-And-Refresh-Strategies.md", status: "done", note: "Zero-downtime REFRESH CONCURRENTLY and SQL Server Indexed Views." },
                     { id: "s4-13", title: "13 - Principal Database Security & Performance Checklist", path: "04-Database/13-Database-Security-Audit-Checklist.md", status: "done", note: "10-pillar Go/No-Go production release gate." },
                     { id: "s4-14", title: "14 - Hands-On Database Architecture Labs", path: "04-Database/14-Hands-On-Database-Labs.md", status: "done", note: "6 hands-on labs: key lookups, sort spills, deadlocks, connection leaks, compiled models, and bulk copy." },
                     { id: "s4-15", title: "15 - Production Incident Post-Mortem (Lock Avalanche)", path: "04-Database/15-Database-Incident.md", status: "done", note: "SEV-1 post-mortem on lock escalation, connection starvation, and preventative guardrails." },
@@ -1781,6 +1783,7 @@
                     { id: "s6-09", title: "09 - The Distributed Saga Pattern (Orchestration vs Choreography)", path: "06-Messaging/09-Distributed-Saga-Pattern.md", status: "pending", note: "" },
                     { id: "s6-09a", title: "09A - Inside Saga State Machine Internals (MassTransit)", path: "06-Messaging/09A-Inside-Saga-StateMachine-Internals.md", status: "pending", note: "" },
                     { id: "s6-10", title: "10 - In-Memory Message Pipelines with System.Threading.Channels", path: "06-Messaging/10-InMemory-Channels-Processing.md", status: "pending", note: "" },
+                    { id: "s6-10a", title: "10A - Background Jobs & Distributed Schedulers (Hangfire, Quartz)", path: "06-Messaging/10A-Background-Jobs-And-Distributed-Schedulers.md", status: "pending", note: "" },
                     { id: "s6-11", title: "11 - Competing Consumers & FIFO Ordering", path: "06-Messaging/11-Competing-Consumers-And-FIFO-Ordering.md", status: "pending", note: "" },
                     { id: "s6-12", title: "12 - The Claim Check Pattern (Large Message Offloading)", path: "06-Messaging/12-Claim-Check-Pattern.md", status: "pending", note: "" },
                     { id: "s6-13", title: "13 - Principal Messaging Production Release Checklist", path: "06-Messaging/13-Principal-Messaging-Checklist.md", status: "pending", note: "" },
@@ -1919,31 +1922,82 @@
                     { id: "s10-readme", title: "README - Sprint 10 Architecture Map & Navigation Matrix", path: "10-System-Design/README.md", status: "pending", note: "" }
                 ]
             },
-            {
+                        {
                 sprintId: 11,
                 sprintCode: "Sprint 11",
-                sprintTitle: "Principal Architecture Review & Governance",
+                sprintTitle: "DevOps, Containerization & CI/CD Pipelines",
                 duration: "Week 11 (7 Days)",
-                description: "Architecture Review Board (ARB) process, evaluating team RFCs, assessing technical debt, setting engineering standards, and technical leadership without authority.",
+                description: "Hardened multi-stage Dockerfiles, layer caching, distroless/chiseled non-root execution, container lifecycle, cloud registries (ACR/ECR), GitHub Actions YAML pipelines, automated NetArchTest/Trivy gates, and Blue/Green zero-downtime releases.",
                 items: [
-                    { id: "s11-01", title: "01 - The Architecture Review Board (ARB) Governance", path: "11-Architecture-Review/01-ARB-Governance.md", status: "pending", note: "" },
-                    { id: "s11-02", title: "02 - Evaluating RFCs: Spotting Hidden Architectural Flaws", path: "11-Architecture-Review/02-RFC-Evaluation.md", status: "pending", note: "" },
-                    { id: "s11-03", title: "03 - Technical Debt Valuation & Remediation Strategy", path: "11-Architecture-Review/03-Tech-Debt-Valuation.md", status: "pending", note: "" },
-                    { id: "s11-04", title: "04 - Setting Cross-Team Engineering Standards & Guilds", path: "11-Architecture-Review/04-Engineering-Standards.md", status: "pending", note: "" },
-                    { id: "s11-05", title: "05 - Influence Without Authority: Guiding Staff & Senior Engineers", path: "11-Architecture-Review/05-Technical-Leadership.md", status: "pending", note: "" }
+                    { id: "s11-01", title: "01 - The Incident: The Broken Pipeline & 4GB Fat Image Meltdown", path: "11-DevOps-And-Pipelines/01-Story.md", status: "pending", note: "" },
+                    { id: "s11-02", title: "02 - Principal DevOps & Continuous Delivery Competency Matrix", path: "11-DevOps-And-Pipelines/02-Learning-Objectives.md", status: "pending", note: "" },
+                    { id: "s11-05", title: "05 - Production Multi-Stage Dockerfiles & Layer Caching", path: "11-DevOps-And-Pipelines/05-Production-Dockerfiles-And-Optimization.md", status: "pending", note: "" },
+                    { id: "s11-06", title: "06 - Container Lifecycle Management & Cloud Registries", path: "11-DevOps-And-Pipelines/06-Container-Lifecycle-And-Registries.md", status: "pending", note: "" },
+                    { id: "s11-07", title: "07 - Declarative CI/CD Pipelines with GitHub Actions", path: "11-DevOps-And-Pipelines/07-Declarative-CICD-Pipelines-GitHub-Actions.md", status: "pending", note: "" },
+                    { id: "s11-09", title: "09 - Automated Quality Gates & Artifact Publishing", path: "11-DevOps-And-Pipelines/09-Automated-Quality-Gates-And-Artifact-Publishing.md", status: "pending", note: "" },
+                    { id: "s11-10", title: "10 - Multi-Environment Release & Zero-Downtime Deployments", path: "11-DevOps-And-Pipelines/10-Multi-Environment-Release-And-Deployment-Strategies.md", status: "pending", note: "" },
+                    { id: "s11-11", title: "11 - Production Hands-On DevOps Labs (5 Scenarios)", path: "11-DevOps-And-Pipelines/11-Hands-On-DevOps-Labs.md", status: "pending", note: "" },
+                    { id: "s11-15", title: "15 - Sprint 11 Executive Summary & 10 Invariant Laws", path: "11-DevOps-And-Pipelines/15-Summary.md", status: "pending", note: "" },
+                    { id: "s11-readme", title: "README - Sprint 11 Architecture Map & Navigation Matrix", path: "11-DevOps-And-Pipelines/README.md", status: "pending", note: "" }
                 ]
             },
             {
                 sprintId: 12,
                 sprintCode: "Sprint 12",
-                sprintTitle: "Principal Mock Interview & Capstone Defense",
+                sprintTitle: "AI Architecture, Production RAG & Autonomous Agents",
                 duration: "Week 12 (7 Days)",
-                description: "Principal Systems Design live challenge defense, failure triage defense, CTO/VP behavioral leadership defense, and final capstone architecture review.",
+                description: "Vector embedding mathematics (Cosine/Dot/Euclidean), HNSW index graphs, quantization (PQ/SQ), hybrid retrieval with Reciprocal Rank Fusion (RRF), autonomous ReAct agent loops, Model Context Protocol (MCP) tool integration, and vector multi-tenancy ACL security.",
                 items: [
-                    { id: "s12-01", title: "01 - Principal Systems Design Mock Defense (Live Challenge)", path: "12-Principal-Review/01-System-Design-Defense.md", status: "pending", note: "" },
-                    { id: "s12-02", title: "02 - Failure Triage & Production Incident Defense", path: "12-Principal-Review/02-Incident-Defense.md", status: "pending", note: "" },
-                    { id: "s12-03", title: "03 - Executive & Behavioral Leadership Defense (CTO / VP Eng)", path: "12-Principal-Review/03-Executive-Leadership.md", status: "pending", note: "" },
-                    { id: "s12-04", title: "04 - Final Capstone Architecture Defense & Certification", path: "12-Principal-Review/04-Capstone-Defense.md", status: "pending", note: "" }
+                    { id: "s12-01", title: "01 - The Incident: The Hallucination Outage & $140k Vector Runaway", path: "12-AI-And-Agents/01-Story.md", status: "pending", note: "" },
+                    { id: "s12-02", title: "02 - Principal AI Architecture & Retrieval Competency Matrix", path: "12-AI-And-Agents/02-Learning-Objectives.md", status: "pending", note: "" },
+                    { id: "s12-03", title: "03 - System Requirements: SLAs, Latency & Governance", path: "12-AI-And-Agents/03-AI-Requirements.md", status: "pending", note: "" },
+                    { id: "s12-04", title: "04 - Enterprise AI Solution Architecture Blueprint", path: "12-AI-And-Agents/04-AI-Architecture.md", status: "pending", note: "" },
+                    { id: "s12-05", title: "05 - Vector Embeddings & Similarity Search Topologies", path: "12-AI-And-Agents/05-Vector-Embeddings-And-Similarity-Search.md", status: "pending", note: "" },
+                    { id: "s12-06", title: "06 - Production-Grade RAG: Chunking & Hybrid Search", path: "12-AI-And-Agents/06-Production-RAG-Architecture.md", status: "pending", note: "" },
+                    { id: "s12-07", title: "07 - Autonomous AI Agents & ReAct Execution Loops", path: "12-AI-And-Agents/07-Agent-Concepts-And-ReAct-Loops.md", status: "pending", note: "" },
+                    { id: "s12-08", title: "08 - Model Context Protocol (MCP) Integration", path: "12-AI-And-Agents/08-Model-Context-Protocol-MCP-Integration.md", status: "pending", note: "" },
+                    { id: "s12-09", title: "09 - AI Security: RAG Access Controls & Multi-Tenancy", path: "12-AI-And-Agents/09-AI-Security-And-RAG-Access-Controls.md", status: "pending", note: "" },
+                    { id: "s12-10", title: "10 - Production Hands-On AI Labs (5 Scenarios)", path: "12-AI-And-Agents/10-Hands-On-AI-Architecture-Labs.md", status: "pending", note: "" },
+                    { id: "s12-11", title: "11 - SEV-1 Post-Mortem: Cross-Tenant Data Leakage", path: "12-AI-And-Agents/11-Production-Incident-Post-Mortem.md", status: "pending", note: "" },
+                    { id: "s12-12", title: "12 - Principal AI Architecture Defense Questions", path: "12-AI-And-Agents/12-Principal-AI-Defense-Questions.md", status: "pending", note: "" },
+                    { id: "s12-13", title: "13 - Staff & Principal AI Technical Interview Scenarios", path: "12-AI-And-Agents/13-Principal-AI-Interview-Scenarios.md", status: "pending", note: "" },
+                    { id: "s12-14", title: "14 - Sprint 12 Executive Summary & 10 Invariant Laws", path: "12-AI-And-Agents/14-Summary.md", status: "pending", note: "" },
+                    { id: "s12-15", title: "15 - Curated Resources & Landmark AI Papers", path: "12-AI-And-Agents/15-Resources.md", status: "pending", note: "" },
+                    { id: "s12-readme", title: "README - Sprint 12 Architecture Map & Navigation Matrix", path: "12-AI-And-Agents/README.md", status: "pending", note: "" }
+                ]
+            },
+            {
+                sprintId: 13,
+                sprintCode: "Sprint 13",
+                sprintTitle: "Modern Frontend Architecture & Reactive Systems",
+                duration: "Week 13 (7 Days)",
+                description: "Advanced reactive programming with RxJS (operators, subjects, memory leak prevention via takeUntilDestroyed), TC39 TypeScript decorators, component lifecycles, HTTP interceptors (token injection, queued 401 refresh), custom directives, and sub-16ms change detection / Virtual DOM tuning.",
+                items: [
+                    { id: "s13-01", title: "01 - The Incident: The Memory Leak Freeze & Re-Render Cascade", path: "13-Frontend-Architecture/01-Story.md", status: "pending", note: "" },
+                    { id: "s13-02", title: "02 - Principal Frontend Competency Matrix", path: "13-Frontend-Architecture/02-Learning-Objectives.md", status: "pending", note: "" },
+                    { id: "s13-03", title: "03 - Advanced Reactive Programming with RxJS", path: "13-Frontend-Architecture/03-Advanced-Reactive-Programming-RxJS.md", status: "pending", note: "" },
+                    { id: "s13-04", title: "04 - TypeScript Decorators & Meta-Programming", path: "13-Frontend-Architecture/04-TypeScript-Decorators-And-Metaprogramming.md", status: "pending", note: "" },
+                    { id: "s13-06", title: "06 - Enterprise HTTP Interceptors & Token Loops", path: "13-Frontend-Architecture/06-Enterprise-HTTP-Interceptors.md", status: "pending", note: "" },
+                    { id: "s13-08", title: "08 - Change Detection & Reconciliation Optimization", path: "13-Frontend-Architecture/08-Change-Detection-And-Reconciliation.md", status: "pending", note: "" },
+                    { id: "s13-09", title: "09 - Production Hands-On Frontend Labs (5 Scenarios)", path: "13-Frontend-Architecture/09-Hands-On-Frontend-Architecture-Labs.md", status: "pending", note: "" },
+                    { id: "s13-12", title: "12 - Sprint 13 Executive Summary & 10 Invariant Laws", path: "13-Frontend-Architecture/12-Summary.md", status: "pending", note: "" },
+                    { id: "s13-readme", title: "README - Sprint 13 Architecture Map & Navigation Matrix", path: "13-Frontend-Architecture/README.md", status: "pending", note: "" }
+                ]
+            },
+            {
+                sprintId: 14,
+                sprintCode: "Sprint 14",
+                sprintTitle: "Principal Architecture Review, Governance & Capstone Defense",
+                duration: "Week 14 (7 Days)",
+                description: "Architecture Review Board (ARB) governance charters, evaluating RFCs, technical debt valuation models, cross-team engineering standards, live system design challenge defense, incident triage war rooms, executive CTO/VP leadership, and capstone certification.",
+                items: [
+                    { id: "s14-01", title: "01 - The Architecture Review Board (ARB) Governance", path: "14-Principal-Review/01-ARB-Governance.md", status: "pending", note: "" },
+                    { id: "s14-02", title: "02 - Evaluating RFCs: Spotting Hidden Architectural Flaws", path: "14-Principal-Review/02-RFC-Evaluation.md", status: "pending", note: "" },
+                    { id: "s14-03", title: "03 - Technical Debt Valuation & Remediation Strategy", path: "14-Principal-Review/03-Tech-Debt-Valuation.md", status: "pending", note: "" },
+                    { id: "s14-06", title: "06 - Principal Systems Design Live Challenge Defense", path: "14-Principal-Review/06-System-Design-Defense.md", status: "pending", note: "" },
+                    { id: "s14-09", title: "09 - Final Capstone Architecture Defense & Certification", path: "14-Principal-Review/09-Capstone-Defense.md", status: "pending", note: "" },
+                    { id: "s14-10", title: "10 - Executive Summary & The Principal Engineer Creed", path: "14-Principal-Review/10-Summary.md", status: "pending", note: "" },
+                    { id: "s14-readme", title: "README - Sprint 14 Architecture Map & Navigation Matrix", path: "14-Principal-Review/README.md", status: "pending", note: "" }
                 ]
             }
         ];
@@ -2006,7 +2060,10 @@
             { id: "sprint-04", icon: "🗄️", name: "Database Guru", desc: "Conquer Sprint 04" },
             { id: "sprint-05", icon: "⚡", name: "Runtime Master", desc: "Conquer Sprint 05" },
             { id: "sprint-06", icon: "📨", name: "Messaging Expert", desc: "Conquer Sprint 06" },
-            { id: "sprint-12", icon: "👑", name: "Principal Certified", desc: "Complete all 12 sprints" },
+            { id: "sprint-11", icon: "🚀", name: "DevOps Delivery Master", desc: "Conquer Sprint 11" },
+            { id: "sprint-12", icon: "🧠", name: "AI & RAG Architect", desc: "Conquer Sprint 12" },
+            { id: "sprint-13", icon: "⚡", name: "Reactive Frontend Master", desc: "Conquer Sprint 13" },
+            { id: "sprint-14", icon: "👑", name: "Principal Certified", desc: "Complete all 14 sprints" },
             { id: "deep-diver", icon: "🔬", name: "Deep Diver", desc: "Complete 5 'Inside' deep-dive chapters" },
             { id: "streak-3", icon: "🔥", name: "On Fire", desc: "Maintain a 3-day study streak" },
             { id: "streak-7", icon: "💪", name: "Unstoppable", desc: "Maintain a 7-day study streak" },
@@ -2068,7 +2125,7 @@
             btn.innerHTML = isFree ? "🌐 Free Roam: <strong>ON</strong>" : "🌐 Free Roam: <strong>OFF</strong>";
             btn.classList.toggle("btn-free-roam-active", !!isFree);
             btn.title = isFree 
-                ? "Free Roam Mode is ON: All 12 sprints are unlocked for parallel learning. Click to switch back to Sequential waterfall." 
+                ? "Free Roam Mode is ON: All 14 sprints are unlocked for parallel learning. Click to switch back to Sequential waterfall." 
                 : "Sequential Mode is ON: Sprints unlock sequentially as previous sprints finish (or when individually unlocked). Click to unlock all 12 sprints at once.";
         }
 
@@ -2694,7 +2751,7 @@
                 document.getElementById("btnStartNextQuest").style.display = "inline-flex";
                 document.getElementById("btnMarkNextDone").style.display = "none";
             } else {
-                document.getElementById("nextTargetTitle").innerText = "🎉 All 12 Sprints Conquered! You are a Principal Engineer!";
+                document.getElementById("nextTargetTitle").innerText = "🎉 All 14 Sprints Conquered! You are a Principal Engineer!";
                 document.getElementById("nextTargetMeta").innerText = "Ready for Capstone Defense & Certification.";
                 document.getElementById("btnStartNextQuest").style.display = "none";
                 document.getElementById("btnMarkNextDone").style.display = "none";
@@ -2913,7 +2970,7 @@
         }
 
         function uncheckAllTopics() {
-            if (confirm("Are you sure you want to UNCHECK ALL items across all 12 sprints? (Your personal study notes and focus timer logs will be preserved).")) {
+            if (confirm("Are you sure you want to UNCHECK ALL items across all 14 sprints? (Your personal study notes and focus timer logs will be preserved).")) {
                 studentState.curriculum.forEach(sprint => {
                     sprint.items.forEach(i => i.status = "pending");
                 });
@@ -2924,7 +2981,7 @@
         }
 
         function checkAllTopics() {
-            if (confirm("Mark ALL items across all 12 sprints as completed?")) {
+            if (confirm("Mark ALL items across all 14 sprints as completed?")) {
                 studentState.curriculum.forEach(sprint => {
                     sprint.items.forEach(i => i.status = "done");
                 });
