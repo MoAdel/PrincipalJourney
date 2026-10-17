@@ -34,6 +34,19 @@ The VP of Engineering demands an immediate explanation:
 
 ---
 
+
+> 📐 **Derive It (Fermi Mode): Incident Capacity & Blast-Radius Math**
+> - **Inputs**: `PeakRPS = 2500`, `DegradedHoldTimeMs = 1200`, `ResourceCeiling = 1000`
+> - **Formula**: `InFlightSaturation = PeakRPS * (DegradedHoldTimeMs / 1000)`
+> - **Step-by-Step**:
+>   1. By Little's Law ($L = \lambda \times W$), $2,500\text{ RPS} \times 1.2\text{ s} = 3,000\text{ concurrent resources demanded}$.
+>   2. Because $3,000 > 1,000$ (`ResourceCeiling`), the saturation queue grows at $+2,000\text{ items/sec}$, exhausting host capacity in $< 2\text{ seconds}$.
+> - **What-If Sensitivity**: Reduce `DegradedHoldTimeMs` from `1200ms` to `4ms` via the Principal Refactor below — concurrency drops to $2,500 \times 0.004 = 10$ ($1.0\%$ utilization)!
+
+<!-- TELEMETRY_WIDGET: title="02-Incident-Memory-Leak-Exception-Blizzard" metric1="Primary Latency (ms)" metric2="Resource Saturation (%)" threshold="Critical SLA Ceiling" -->
+
+---
+
 ## 🔍 2. Diagnostic Investigation (Your Detective Turn)
 
 Examine the 3 crime-scene code snippets below:
@@ -78,6 +91,9 @@ public class CustomerEmail
 ```
 
 ---
+
+
+<!-- PREDICT_GATE: Commit your root-cause hypothesis from the diagnostic evidence above before unlocking Section 3 (Deep Engine Internals). -->
 
 ## ⚙️ 3. Deep Internals & Root Cause Analysis
 
@@ -217,12 +233,12 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
 
 ### 📊 The Scoreboard: Before vs. After
 
-| Metric | Before (The Incident) | After (The Principal Architecture) |
-|---|---|---|
-| **Heap Memory under Peak Load** | **31.8 GB** (OOM Crash Loop) | **1.4 GB** (Stable) |
-| **Hot-Path Log Allocation** | 148 Bytes / Log Statement | **0 Bytes (Zero Heap Allocation)** |
-| **Business Flow Validation Cost** | 11,200 CPU cycles / failure | **2 CPU cycles (`Result<T>`)** |
-| **Regex Backtracking Latency** | 3,800ms+ (100% CPU lockup) | **< 0.02ms (Guaranteed Linear Time)** |
+| Metric | Before (The Incident) | After (The Principal Architecture) | Validation & Rollback Procedure |
+|---|---|---|---|
+| **Heap Memory under Peak Load** | **31.8 GB** (OOM Crash Loop) | **1.4 GB** (Stable) | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Hot-Path Log Allocation** | 148 Bytes / Log Statement | **0 Bytes (Zero Heap Allocation)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Business Flow Validation Cost** | 11,200 CPU cycles / failure | **2 CPU cycles (`Result<T>`)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Regex Backtracking Latency** | 3,800ms+ (100% CPU lockup) | **< 0.02ms (Guaranteed Linear Time)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
 
 ---
 
@@ -249,6 +265,15 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
 
 **The Principal Defense**:
 > *"The default .NET regex engine uses an NFA backtracking algorithm that can degrade to $O(2^n)$ exponential time complexity when matching adversarial inputs, opening the door to catastrophic ReDoS attacks that freeze thread pools. `RegexOptions.NonBacktracking` uses a DFA (Deterministic Finite Automaton) engine that guarantees linear $O(N)$ execution time proportional strictly to the length of the input string, completely immune to backtracking denial-of-service. Combined with C# source generators, the state machine is built at compile-time with zero startup penalty."*
+
+---
+
+
+### Question (The FinOps / Cost Axis):
+> *"A vendor or team proposed throwing 10x hardware / enterprise cluster licensing ($18,000/month) at this problem instead of refactoring the architecture. Defend the 80%-good / Principal mechanical fix."*
+
+**The Principal Defense**:
+> *"Scaling hardware vertically against a non-linear mechanical bottleneck (lock escalation, LOH fragmentation, or $O(N^2)$ scans) burns $216,000/year while only delaying the crash by minutes under peak load. The refactoring above eliminates the root allocation/locking contention at **$0/month additional infrastructure cost**, improving efficiency by two orders of magnitude."*
 
 ---
 

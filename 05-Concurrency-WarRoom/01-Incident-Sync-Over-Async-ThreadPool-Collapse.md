@@ -25,6 +25,19 @@ They scale to 96 pods. The new pods boot up, receive traffic for 10 seconds, and
 
 ---
 
+
+> 📐 **Derive It (Fermi Mode): Incident Capacity & Blast-Radius Math**
+> - **Inputs**: `PeakRPS = 2500`, `DegradedHoldTimeMs = 1200`, `ResourceCeiling = 1000`
+> - **Formula**: `InFlightSaturation = PeakRPS * (DegradedHoldTimeMs / 1000)`
+> - **Step-by-Step**:
+>   1. By Little's Law ($L = \lambda \times W$), $2,500\text{ RPS} \times 1.2\text{ s} = 3,000\text{ concurrent resources demanded}$.
+>   2. Because $3,000 > 1,000$ (`ResourceCeiling`), the saturation queue grows at $+2,000\text{ items/sec}$, exhausting host capacity in $< 2\text{ seconds}$.
+> - **What-If Sensitivity**: Reduce `DegradedHoldTimeMs` from `1200ms` to `4ms` via the Principal Refactor below — concurrency drops to $2,500 \times 0.004 = 10$ ($1.0\%$ utilization)!
+
+<!-- TELEMETRY_WIDGET: title="01-Incident-Sync-Over-Async-ThreadPool-Collapse" metric1="Primary Latency (ms)" metric2="Resource Saturation (%)" threshold="Critical SLA Ceiling" -->
+
+---
+
 ## 🔍 2. Diagnostic Investigation
 
 You capture a live process dump with `dotnet-dump` and run SOS commands:
@@ -62,6 +75,9 @@ public async Task InvokeAsync(HttpContext context)
 ```
 
 ---
+
+
+<!-- PREDICT_GATE: Commit your root-cause hypothesis from the diagnostic evidence above before unlocking Section 3 (Deep Engine Internals). -->
 
 ## ⚙️ 3. Deep Engine Internals: Why it Happened
 
@@ -124,12 +140,12 @@ public class TenantLoggingMiddleware
 
 ### 📊 The Scoreboard: Before vs. After
 
-| Metric | Before (The Incident) | After (Pure Async Refactor) |
-|---|---|---|
-| **Active Worker Threads** | **250 threads (Saturated)** | **18 threads** |
-| **Queued Work Items** | 14,820 items | **0 items** |
-| **CPU Utilization** | **100.0%** (Context switching) | **12.4%** |
-| **p99 Request Latency** | 29,400 ms (Timeouts) | **14 ms** |
+| Metric | Before (The Incident) | After (Pure Async Refactor) | Validation & Rollback Procedure |
+|---|---|---|---|
+| **Active Worker Threads** | **250 threads (Saturated)** | **18 threads** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Queued Work Items** | 14,820 items | **0 items** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **CPU Utilization** | **100.0%** (Context switching) | **12.4%** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **p99 Request Latency** | 29,400 ms (Timeouts) | **14 ms** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
 
 ---
 
@@ -140,6 +156,15 @@ public class TenantLoggingMiddleware
 
 **The Principal Defense**:
 > *"Wrapping a task in `Task.Run` and then calling `.Result` does not solve starvation—it multiplies it! Now, instead of blocking 1 thread, you block **2 separate ThreadPool worker threads**: the calling thread is blocked on `.Result`, and a second thread is dispatched to execute `GetTenantDetailsAsync`. You consume twice as many threads from the exact same shared pool, accelerating starvation by 200%. The only valid architecture is asynchronous all the way down: `await` without blocking."*
+
+---
+
+
+### Question (The FinOps / Cost Axis):
+> *"A vendor or team proposed throwing 10x hardware / enterprise cluster licensing ($18,000/month) at this problem instead of refactoring the architecture. Defend the 80%-good / Principal mechanical fix."*
+
+**The Principal Defense**:
+> *"Scaling hardware vertically against a non-linear mechanical bottleneck (lock escalation, LOH fragmentation, or $O(N^2)$ scans) burns $216,000/year while only delaying the crash by minutes under peak load. The refactoring above eliminates the root allocation/locking contention at **$0/month additional infrastructure cost**, improving efficiency by two orders of magnitude."*
 
 ---
 

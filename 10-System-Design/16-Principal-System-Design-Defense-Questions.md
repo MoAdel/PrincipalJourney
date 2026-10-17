@@ -68,3 +68,20 @@ graph TD
 | **13. API Rate Limiting** | "Rate limit only by client IP address." | Multiple enterprise corporate buyers share single proxy IP addresses. IP-only rate limiting blocks thousands of legitimate users. Rate limit by authenticated `TenantId` or API key. |
 | **14. Eventual Consistency in UI** | "Users will be confused if they don't see their updates instantly." | Use optimistic UI updates on the frontend (render the post immediately) while background network sync completes asynchronously. |
 | **15. Telemetry Egress Costs** | "Ship all raw traces and logs to our central cloud region." | Cross-region egress charges cost hundreds of thousands of dollars. Deploy local collector agents with tail sampling to drop 95% of healthy traces at the edge. |
+
+
+---
+
+## 💰 The FinOps & Unit-Economics Defense Axis (10-System-Design)
+
+### Question (The CFO / CTO Cost Challenge):
+> *"This architecture is technically textbook, but we are killing it because the enterprise managed tier / over-provisioned footprint costs $15,000/month. Defend the 80%-good alternative at 20% of the cost, and state the exact quantitative threshold where upgrading becomes justified."*
+
+**Principal Defense**:
+1. **Unit-Economics First**: At early-to-mid scale (`< 1,500 RPS`), paying `$15,000/month` for dedicated multi-cluster licensing or 10x idle headroom violates unit economics (`Cost per 1M requests`).
+2. **The 80%-Good Architecture at 20% Cost (`~$2,200/month`)**:
+   - Replace network-chatty sidecars/clusters with in-process L1/L2 caching (`HybridCache`), bounded `System.Threading.Channels`, and modular monolith / shared-cluster partitioning with strict tenant/bulkhead quotas.
+   - Apply tail-based sampling (`100%` errors, `1%` happy path) and topology-aware AZ routing to eliminate cross-AZ egress waste.
+3. **Quantitative Upgrade Trigger (Invalidation Criteria)**:
+   - We revisit and fund the `$15,000/month` tier only when sustained $p95$ load exceeds `8,000 RPS` for 14 consecutive days OR when contractual SLA downtime penalties exceed `$250,000/year`.
+

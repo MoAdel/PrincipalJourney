@@ -36,6 +36,19 @@ The CTO demands:
 
 ---
 
+
+> 📐 **Derive It (Fermi Mode): Incident Capacity & Blast-Radius Math**
+> - **Inputs**: `PeakRPS = 2500`, `DegradedHoldTimeMs = 1200`, `ResourceCeiling = 1000`
+> - **Formula**: `InFlightSaturation = PeakRPS * (DegradedHoldTimeMs / 1000)`
+> - **Step-by-Step**:
+>   1. By Little's Law ($L = \lambda \times W$), $2,500\text{ RPS} \times 1.2\text{ s} = 3,000\text{ concurrent resources demanded}$.
+>   2. Because $3,000 > 1,000$ (`ResourceCeiling`), the saturation queue grows at $+2,000\text{ items/sec}$, exhausting host capacity in $< 2\text{ seconds}$.
+> - **What-If Sensitivity**: Reduce `DegradedHoldTimeMs` from `1200ms` to `4ms` via the Principal Refactor below — concurrency drops to $2,500 \times 0.004 = 10$ ($1.0\%$ utilization)!
+
+<!-- TELEMETRY_WIDGET: title="03-Incident-Database-Meltdown-Keyset-Pagination" metric1="Primary Latency (ms)" metric2="Resource Saturation (%)" threshold="Critical SLA Ceiling" -->
+
+---
+
 ## 🔍 2. Diagnostic Investigation (Your Detective Turn)
 
 Analyze the 3 critical code snippets below:
@@ -79,6 +92,9 @@ app.UseMiddleware<GlobalExceptionMiddleware>();           // Placed AFTER execut
 ```
 
 ---
+
+
+<!-- PREDICT_GATE: Commit your root-cause hypothesis from the diagnostic evidence above before unlocking Section 3 (Deep Engine Internals). -->
 
 ## ⚙️ 3. Deep Internals & Root Cause Analysis
 
@@ -242,12 +258,12 @@ app.MapHealthChecks("/healthz/liveness");
 
 ### 📊 The Scoreboard: Before vs. After
 
-| Metric | Before (Offset `Skip/Take`) | After (Keyset Seek) |
-|---|---|---|
-| **Query Latency on Page 12,400** | **22,400 ms** (Disk Throttled) | **1.2 ms (O(1) B-Tree Seek)** |
-| **Rows Read & Discarded by DB** | 620,000 rows / query | **0 rows (Zero Waste)** |
-| **Database Buffer Pool Eviction** | 8.4 GB flushed / query | **0 MB (Negligible footprint)** |
-| **Double-Charge Incident Risk** | 8,400 duplicates recorded | **0 (Strict Idempotency Guard)** |
+| Metric | Before (Offset `Skip/Take`) | After (Keyset Seek) | Validation & Rollback Procedure |
+|---|---|---|---|
+| **Query Latency on Page 12,400** | **22,400 ms** (Disk Throttled) | **1.2 ms (O(1) B-Tree Seek)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Rows Read & Discarded by DB** | 620,000 rows / query | **0 rows (Zero Waste)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Database Buffer Pool Eviction** | 8.4 GB flushed / query | **0 MB (Negligible footprint)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Double-Charge Incident Risk** | 8,400 duplicates recorded | **0 (Strict Idempotency Guard)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
 
 ---
 
@@ -274,6 +290,15 @@ app.MapHealthChecks("/healthz/liveness");
 
 **The Principal Defense**:
 > *"`SELECT COUNT(*)` on a table with 20 million rows forces the database to scan the entire index, consuming massive CPU cycles and holding read locks. By simply requesting `PageSize + 1` (e.g., asking for 51 records instead of 50), if the database returns 51 rows, we know with 100% mathematical certainty that a next page exists. We simply pop the 51st row, use its ID as the cursor for the next request, and set `HasMore = true` without spending a single cycle calculating total row counts."*
+
+---
+
+
+### Question (The FinOps / Cost Axis):
+> *"A vendor or team proposed throwing 10x hardware / enterprise cluster licensing ($18,000/month) at this problem instead of refactoring the architecture. Defend the 80%-good / Principal mechanical fix."*
+
+**The Principal Defense**:
+> *"Scaling hardware vertically against a non-linear mechanical bottleneck (lock escalation, LOH fragmentation, or $O(N^2)$ scans) burns $216,000/year while only delaying the crash by minutes under peak load. The refactoring above eliminates the root allocation/locking contention at **$0/month additional infrastructure cost**, improving efficiency by two orders of magnitude."*
 
 ---
 

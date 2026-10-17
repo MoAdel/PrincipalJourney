@@ -33,6 +33,19 @@ You, as the **Principal Software Engineer**, speak up:
 
 ---
 
+
+> 📐 **Derive It (Fermi Mode): Incident Capacity & Blast-Radius Math**
+> - **Inputs**: `PeakRPS = 2500`, `DegradedHoldTimeMs = 1200`, `ResourceCeiling = 1000`
+> - **Formula**: `InFlightSaturation = PeakRPS * (DegradedHoldTimeMs / 1000)`
+> - **Step-by-Step**:
+>   1. By Little's Law ($L = \lambda \times W$), $2,500\text{ RPS} \times 1.2\text{ s} = 3,000\text{ concurrent resources demanded}$.
+>   2. Because $3,000 > 1,000$ (`ResourceCeiling`), the saturation queue grows at $+2,000\text{ items/sec}$, exhausting host capacity in $< 2\text{ seconds}$.
+> - **What-If Sensitivity**: Reduce `DegradedHoldTimeMs` from `1200ms` to `4ms` via the Principal Refactor below — concurrency drops to $2,500 \times 0.004 = 10$ ($1.0\%$ utilization)!
+
+<!-- TELEMETRY_WIDGET: title="05-Incident-Architectural-Rot-PR-Gauntlet" metric1="Primary Latency (ms)" metric2="Resource Saturation (%)" threshold="Critical SLA Ceiling" -->
+
+---
+
 ## 🔍 2. Diagnostic Investigation (Your Detective Turn)
 
 Analyze the 3 fatal architectural violations below:
@@ -80,6 +93,9 @@ public class CheckoutController : ControllerBase
 * Developers merge PRs with whatever references they want because **there is zero compiler or CI gate enforcing dependency directions**.
 
 ---
+
+
+<!-- PREDICT_GATE: Commit your root-cause hypothesis from the diagnostic evidence above before unlocking Section 3 (Deep Engine Internals). -->
 
 ## ⚙️ 3. Deep Internals & Root Cause Analysis
 
@@ -214,12 +230,12 @@ public class OrdersV2Controller : ControllerBase
 
 ### 📊 The Scoreboard: Before vs. After
 
-| Metric | Before (Architectural Chaos) | After (Clean Architecture Standard) |
-|---|---|---|
-| **Domain Unit Test Execution Time** | 4,200ms (Required Docker SQL DB) | **0.8ms (Pure in-memory C#)** |
-| **Mobile App Crash Rate** | 100% on contract update | **0% (Seamless v1 $\rightarrow$ v2 Versioning)** |
-| **Architectural Drift in PRs** | Undetected until Production | **Blocked in CI via `NetArchTest`** |
-| **Time to Onboard New Engineer** | 6 Weeks | **4 Days (Predictable Layered Rules)** |
+| Metric | Before (Architectural Chaos) | After (Clean Architecture Standard) | Validation & Rollback Procedure |
+|---|---|---|---|
+| **Domain Unit Test Execution Time** | 4,200ms (Required Docker SQL DB) | **0.8ms (Pure in-memory C#)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Mobile App Crash Rate** | 100% on contract update | **0% (Seamless v1 $\rightarrow$ v2 Versioning)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Architectural Drift in PRs** | Undetected until Production | **Blocked in CI via `NetArchTest`** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Time to Onboard New Engineer** | 6 Weeks | **4 Days (Predictable Layered Rules)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
 
 ---
 
@@ -246,6 +262,15 @@ public class OrdersV2Controller : ControllerBase
 
 **The Principal Defense**:
 > *"A Principal Engineer never relies on personal oversight or manual review to enforce architecture. We encode our architectural rules as **first-class unit tests** using `NetArchTest`. If any developer adds a reference from Domain to Infrastructure or creates a controller without API versioning, the unit test suite fails in the GitHub Actions / Azure DevOps CI pipeline, blocking the merge automatically. We turn architectural governance from a debate into a compiler check."*
+
+---
+
+
+### Question (The FinOps / Cost Axis):
+> *"A vendor or team proposed throwing 10x hardware / enterprise cluster licensing ($18,000/month) at this problem instead of refactoring the architecture. Defend the 80%-good / Principal mechanical fix."*
+
+**The Principal Defense**:
+> *"Scaling hardware vertically against a non-linear mechanical bottleneck (lock escalation, LOH fragmentation, or $O(N^2)$ scans) burns $216,000/year while only delaying the crash by minutes under peak load. The refactoring above eliminates the root allocation/locking contention at **$0/month additional infrastructure cost**, improving efficiency by two orders of magnitude."*
 
 ---
 

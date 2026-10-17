@@ -6,6 +6,16 @@
 
 ---
 
+
+> 📐 **Derive It (Fermi Mode): Capacity, Throughput & Memory Envelope**
+> - **Inputs**: `TargetRPS = 2000`, `OperationLatencyMs = 8`, `PayloadKB = 16`
+> - **Formula**: `ConcurrentInFlightMemoryMB = (TargetRPS * (OperationLatencyMs / 1000) * PayloadKB) / 1024`
+> - **Step-by-Step**:
+>   1. Concurrent in-flight operations by Little's Law: $L = 2,000 \times 0.008\text{ s} = 16\text{ active operations}$.
+>   2. Steady-state buffer footprint: $16 \times 16\text{ KB} = 256\text{ KB}$ ($0.25\text{ MB}$).
+> - **What-If Sensitivity**: If downstream contention degrades `OperationLatencyMs` from `8ms` to `4,000ms`, concurrency spikes $500\times$ to $8,000\text{ in-flight operations}$ ($128\text{ MB}$ + thread/socket exhaustion). Always verify how your lab holds under $10\times$ latency degradation!
+
+
 ## Lab 1: SIMD-Accelerated Vector Distance Engine
 - **Objective**: Implement Cosine Similarity, Dot Product, and Euclidean Distance in C# using `System.Numerics.Vector<float>` for hardware acceleration.
 - **Verification**: Benchmark 1,000,000 pairwise distance comparisons; demonstrate that normalized Dot Product executes $>3	imes$ faster than standard Cosine Similarity.
@@ -16,7 +26,9 @@
 
 ## Lab 3: Production ReAct Agent Loop
 - **Objective**: Construct an autonomous ReAct loop with trajectory recording, tool registration, output truncation, and a 5-step iteration guard.
-- **Verification**: Simulate a multi-step user goal (query status $ightarrow$ check refund policy $ightarrow$ execute refund) and verify graceful failure when a tool throws.
+- **Verification**: Simulate a multi-step user goal (query status $
+ightarrow$ check refund policy $
+ightarrow$ execute refund) and verify graceful failure when a tool throws.
 
 ## Lab 4: Model Context Protocol (MCP) Server
 - **Objective**: Implement an MCP server responding to JSON-RPC 2.0 `initialize`, `tools/list`, and `tools/call` over Stdio.

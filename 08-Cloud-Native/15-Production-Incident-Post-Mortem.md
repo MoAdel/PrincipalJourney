@@ -1,7 +1,17 @@
 # SEV-1 Post-Mortem: The $140,000 Serverless Recursive Loop & Split-Brain Outage
 
 | Incident Detail | Value |
-|---|---|
+|---
+
+
+> 📐 **Derive It (Fermi Mode): Capacity, Throughput & Memory Envelope**
+> - **Inputs**: `TargetRPS = 2000`, `OperationLatencyMs = 8`, `PayloadKB = 16`
+> - **Formula**: `ConcurrentInFlightMemoryMB = (TargetRPS * (OperationLatencyMs / 1000) * PayloadKB) / 1024`
+> - **Step-by-Step**:
+>   1. Concurrent in-flight operations by Little's Law: $L = 2,000 \times 0.008\text{ s} = 16\text{ active operations}$.
+>   2. Steady-state buffer footprint: $16 \times 16\text{ KB} = 256\text{ KB}$ ($0.25\text{ MB}$).
+> - **What-If Sensitivity**: If downstream contention degrades `OperationLatencyMs` from `8ms` to `4,000ms`, concurrency spikes $500\times$ to $8,000\text{ in-flight operations}$ ($128\text{ MB}$ + thread/socket exhaustion). Always verify how your lab holds under $10\times$ latency degradation!
+|---|
 | **Incident ID** | INC-2026-0814-SEV1 |
 | **Severity** | SEV-1 (Critical Revenue & Operational Impact) |
 | **Date & Time** | 2026-08-14 02:15 UTC to 07:45 UTC (Duration: 5h 30m) |

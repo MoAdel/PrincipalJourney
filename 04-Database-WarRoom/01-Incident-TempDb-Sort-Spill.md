@@ -37,6 +37,19 @@ Query: SELECT OrderId, CustomerId, TotalAmount, CreatedAt FROM Orders
 
 ---
 
+
+> 📐 **Derive It (Fermi Mode): Incident Capacity & Blast-Radius Math**
+> - **Inputs**: `PeakRPS = 2500`, `DegradedHoldTimeMs = 1200`, `ResourceCeiling = 1000`
+> - **Formula**: `InFlightSaturation = PeakRPS * (DegradedHoldTimeMs / 1000)`
+> - **Step-by-Step**:
+>   1. By Little's Law ($L = \lambda \times W$), $2,500\text{ RPS} \times 1.2\text{ s} = 3,000\text{ concurrent resources demanded}$.
+>   2. Because $3,000 > 1,000$ (`ResourceCeiling`), the saturation queue grows at $+2,000\text{ items/sec}$, exhausting host capacity in $< 2\text{ seconds}$.
+> - **What-If Sensitivity**: Reduce `DegradedHoldTimeMs` from `1200ms` to `4ms` via the Principal Refactor below — concurrency drops to $2,500 \times 0.004 = 10$ ($1.0\%$ utilization)!
+
+<!-- TELEMETRY_WIDGET: title="01-Incident-TempDb-Sort-Spill" metric1="Primary Latency (ms)" metric2="Resource Saturation (%)" threshold="Critical SLA Ceiling" -->
+
+---
+
 ## 🔍 2. Diagnostic Investigation
 
 Analyze the execution plan and index definition:
@@ -60,6 +73,9 @@ ORDER BY CreatedAt DESC;
 5. **The Spill**: Because the granted memory (1 MB) was far smaller than the actual data (850 MB), the engine had to write and re-read the intermediate sort runs to physical disk in `tempdb` (**Level 2 Sort Spill**), choking the entire storage controller!
 
 ---
+
+
+<!-- PREDICT_GATE: Commit your root-cause hypothesis from the diagnostic evidence above before unlocking Section 3 (Deep Engine Internals). -->
 
 ## ⚙️ 3. Deep Engine Internals: Why it Happened
 
@@ -90,12 +106,12 @@ UPDATE STATISTICS Orders IX_Orders_Merchant_Status_CreatedAt WITH FULLSCAN;
 
 ### 📊 The Scoreboard: Before vs. After
 
-| Metric | Before (The Incident) | After (B-Tree Seek Refactor) |
-|---|---|---|
-| **Query Latency** | **42,000 ms** (Disk Throttled) | **3.8 ms (Instantaneous)** |
-| **TempDB Disk Spills** | 4,120,500 Pages (~33 GB) | **0 Pages (0 Bytes)** |
-| **Workspace Memory Grant** | 1,024 KB (Under-allocated) | **0 KB (Streaming; No Sort Needed)** |
-| **Logical Reads** | 452,000 Reads (Key Lookups) | **1,250 Reads (Covering Seek)** |
+| Metric | Before (The Incident) | After (B-Tree Seek Refactor) | Validation & Rollback Procedure |
+|---|---|---|---|
+| **Query Latency** | **42,000 ms** (Disk Throttled) | **3.8 ms (Instantaneous)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **TempDB Disk Spills** | 4,120,500 Pages (~33 GB) | **0 Pages (0 Bytes)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Workspace Memory Grant** | 1,024 KB (Under-allocated) | **0 KB (Streaming; No Sort Needed)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Logical Reads** | 452,000 Reads (Key Lookups) | **1,250 Reads (Covering Seek)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
 
 ---
 
@@ -106,6 +122,15 @@ UPDATE STATISTICS Orders IX_Orders_Merchant_Status_CreatedAt WITH FULLSCAN;
 
 **The Principal Defense**:
 > *"Increasing minimum query memory grant database-wide is catastrophic for an OLTP workload. If every simple query is forced to allocate 50 MB of memory, our server will exhaust its total query workspace memory when only 50 concurrent requests arrive, forcing all subsequent requests into `RESOURCE_SEMAPHORE` wait queues. We solve memory grant issues by designing covering indexes that eliminate sort operators, not by wasting gigabytes of RAM on bad plans."*
+
+---
+
+
+### Question (The FinOps / Cost Axis):
+> *"A vendor or team proposed throwing 10x hardware / enterprise cluster licensing ($18,000/month) at this problem instead of refactoring the architecture. Defend the 80%-good / Principal mechanical fix."*
+
+**The Principal Defense**:
+> *"Scaling hardware vertically against a non-linear mechanical bottleneck (lock escalation, LOH fragmentation, or $O(N^2)$ scans) burns $216,000/year while only delaying the crash by minutes under peak load. The refactoring above eliminates the root allocation/locking contention at **$0/month additional infrastructure cost**, improving efficiency by two orders of magnitude."*
 
 ---
 

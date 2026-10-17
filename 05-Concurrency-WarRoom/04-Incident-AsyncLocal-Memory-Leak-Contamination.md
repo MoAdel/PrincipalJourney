@@ -29,6 +29,19 @@ The CISO and CTO demand immediate answers:
 
 ---
 
+
+> 📐 **Derive It (Fermi Mode): Incident Capacity & Blast-Radius Math**
+> - **Inputs**: `PeakRPS = 2500`, `DegradedHoldTimeMs = 1200`, `ResourceCeiling = 1000`
+> - **Formula**: `InFlightSaturation = PeakRPS * (DegradedHoldTimeMs / 1000)`
+> - **Step-by-Step**:
+>   1. By Little's Law ($L = \lambda \times W$), $2,500\text{ RPS} \times 1.2\text{ s} = 3,000\text{ concurrent resources demanded}$.
+>   2. Because $3,000 > 1,000$ (`ResourceCeiling`), the saturation queue grows at $+2,000\text{ items/sec}$, exhausting host capacity in $< 2\text{ seconds}$.
+> - **What-If Sensitivity**: Reduce `DegradedHoldTimeMs` from `1200ms` to `4ms` via the Principal Refactor below — concurrency drops to $2,500 \times 0.004 = 10$ ($1.0\%$ utilization)!
+
+<!-- TELEMETRY_WIDGET: title="04-Incident-AsyncLocal-Memory-Leak-Contamination" metric1="Primary Latency (ms)" metric2="Resource Saturation (%)" threshold="Critical SLA Ceiling" -->
+
+---
+
 ## 🔍 2. Diagnostic Investigation
 
 You inspect the heap dump in SOS using `!dumpheap -stat`:
@@ -71,6 +84,9 @@ public static class AmbientContext
 ```
 
 ---
+
+
+<!-- PREDICT_GATE: Commit your root-cause hypothesis from the diagnostic evidence above before unlocking Section 3 (Deep Engine Internals). -->
 
 ## ⚙️ 3. Deep Engine Internals: Why it Happened
 
@@ -130,12 +146,12 @@ public class BackgroundDispatcher
 
 ### 📊 The Scoreboard: Before vs. After
 
-| Metric | Before (Mutable AsyncLocal) | After (Immutable Record + SuppressFlow) |
-|---|---|---|
-| **Process Memory Footprint** | **16,384 MB (OOM Crash)** | **280 MB (Stable)** |
-| **Gen 2 Heap Allocations** | 12.4 GB in dictionaries | **0 Bytes (Ephemeral Stack/Gen 0)** |
-| **Cross-Tenant Data Leaks** | Continuous contamination | **0 Leaks (100% Isolated Context)** |
-| **Context Capture CPU Overhead** | High | **18% faster task dispatch** |
+| Metric | Before (Mutable AsyncLocal) | After (Immutable Record + SuppressFlow) | Validation & Rollback Procedure |
+|---|---|---|---|
+| **Process Memory Footprint** | **16,384 MB (OOM Crash)** | **280 MB (Stable)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Gen 2 Heap Allocations** | 12.4 GB in dictionaries | **0 Bytes (Ephemeral Stack/Gen 0)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Cross-Tenant Data Leaks** | Continuous contamination | **0 Leaks (100% Isolated Context)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Context Capture CPU Overhead** | High | **18% faster task dispatch** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
 
 ---
 
@@ -146,6 +162,15 @@ public class BackgroundDispatcher
 
 **The Principal Defense**:
 > *"Relying on manual cleanup in a middleware `finally` block is fragile. If an unhandled exception or thread abort occurs before the cleanup code runs, the context will still be captured by any background tasks spawned earlier. More fundamentally, child async branches take their own snapshot of the context tree at the moment they are spawned. Cleaning up the parent does not clear the child branches. The robust architecture is **using immutable value records and suppressing context flow on background task dispatchers**, ensuring context contamination is physically impossible by design."*
+
+---
+
+
+### Question (The FinOps / Cost Axis):
+> *"A vendor or team proposed throwing 10x hardware / enterprise cluster licensing ($18,000/month) at this problem instead of refactoring the architecture. Defend the 80%-good / Principal mechanical fix."*
+
+**The Principal Defense**:
+> *"Scaling hardware vertically against a non-linear mechanical bottleneck (lock escalation, LOH fragmentation, or $O(N^2)$ scans) burns $216,000/year while only delaying the crash by minutes under peak load. The refactoring above eliminates the root allocation/locking contention at **$0/month additional infrastructure cost**, improving efficiency by two orders of magnitude."*
 
 ---
 

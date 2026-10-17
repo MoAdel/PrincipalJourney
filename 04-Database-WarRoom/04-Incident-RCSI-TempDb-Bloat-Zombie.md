@@ -22,6 +22,19 @@ The on-call engineer reports:
 
 ---
 
+
+> 📐 **Derive It (Fermi Mode): Incident Capacity & Blast-Radius Math**
+> - **Inputs**: `PeakRPS = 2500`, `DegradedHoldTimeMs = 1200`, `ResourceCeiling = 1000`
+> - **Formula**: `InFlightSaturation = PeakRPS * (DegradedHoldTimeMs / 1000)`
+> - **Step-by-Step**:
+>   1. By Little's Law ($L = \lambda \times W$), $2,500\text{ RPS} \times 1.2\text{ s} = 3,000\text{ concurrent resources demanded}$.
+>   2. Because $3,000 > 1,000$ (`ResourceCeiling`), the saturation queue grows at $+2,000\text{ items/sec}$, exhausting host capacity in $< 2\text{ seconds}$.
+> - **What-If Sensitivity**: Reduce `DegradedHoldTimeMs` from `1200ms` to `4ms` via the Principal Refactor below — concurrency drops to $2,500 \times 0.004 = 10$ ($1.0\%$ utilization)!
+
+<!-- TELEMETRY_WIDGET: title="04-Incident-RCSI-TempDb-Bloat-Zombie" metric1="Primary Latency (ms)" metric2="Resource Saturation (%)" threshold="Critical SLA Ceiling" -->
+
+---
+
 ## 🔍 2. Diagnostic Investigation
 
 You inspect the version store dynamic management view:
@@ -55,6 +68,9 @@ sql_text: "BEGIN TRANSACTION; SELECT COUNT(*) FROM Customers WHERE Status = 'Act
 5. `tempdb` expanded continuously until the disk ran out of bytes, crashing the entire database cluster!
 
 ---
+
+
+<!-- PREDICT_GATE: Commit your root-cause hypothesis from the diagnostic evidence above before unlocking Section 3 (Deep Engine Internals). -->
 
 ## ⚙️ 3. Deep Engine Internals: Why it Happened
 
@@ -106,12 +122,12 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 ### 📊 The Scoreboard: Before vs. After
 
-| Metric | Before (Zombie Transaction) | After (Watchdog & Timeouts) |
-|---|---|---|
-| **TempDB Storage Consumption** | **280 GB** (Disk Exhaustion) | **2.4 GB (Stable baseline)** |
-| **Oldest Active Transaction** | 7.9 Hours (Uncommitted) | **< 30 Seconds** |
-| **Server Crash Risk** | 100% (Disk Full Outage) | **0% (Automated Cleanup Guard)** |
-| **Version Store Cleanup Latency** | Blocked indefinitely | **Runs continuously every 60s** |
+| Metric | Before (Zombie Transaction) | After (Watchdog & Timeouts) | Validation & Rollback Procedure |
+|---|---|---|---|
+| **TempDB Storage Consumption** | **280 GB** (Disk Exhaustion) | **2.4 GB (Stable baseline)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Oldest Active Transaction** | 7.9 Hours (Uncommitted) | **< 30 Seconds** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Server Crash Risk** | 100% (Disk Full Outage) | **0% (Automated Cleanup Guard)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Version Store Cleanup Latency** | Blocked indefinitely | **Runs continuously every 60s** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
 
 ---
 
@@ -122,6 +138,15 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 **The Principal Defense**:
 > *"Disabling RCSI would immediately bring back the lock escalation deadlocks and reader-writer blocking that caused our \$620,000 Cyber Monday outage. The problem here was not the RCSI engine—the problem was an **unbounded, unmonitored human transaction left open for 8 hours**. In high-concurrency systems, transactions must never be left uncommitted. By enforcing automated watchdog termination for idle transactions and separating read-only analytics to a read-replica, we maintain 100% non-blocking OLTP throughput while keeping version store usage under 3 GB."*
+
+---
+
+
+### Question (The FinOps / Cost Axis):
+> *"A vendor or team proposed throwing 10x hardware / enterprise cluster licensing ($18,000/month) at this problem instead of refactoring the architecture. Defend the 80%-good / Principal mechanical fix."*
+
+**The Principal Defense**:
+> *"Scaling hardware vertically against a non-linear mechanical bottleneck (lock escalation, LOH fragmentation, or $O(N^2)$ scans) burns $216,000/year while only delaying the crash by minutes under peak load. The refactoring above eliminates the root allocation/locking contention at **$0/month additional infrastructure cost**, improving efficiency by two orders of magnitude."*
 
 ---
 

@@ -41,6 +41,19 @@ The CTO joins the bridge:
 
 ---
 
+
+> 📐 **Derive It (Fermi Mode): Incident Capacity & Blast-Radius Math**
+> - **Inputs**: `PeakRPS = 2500`, `DegradedHoldTimeMs = 1200`, `ResourceCeiling = 1000`
+> - **Formula**: `InFlightSaturation = PeakRPS * (DegradedHoldTimeMs / 1000)`
+> - **Step-by-Step**:
+>   1. By Little's Law ($L = \lambda \times W$), $2,500\text{ RPS} \times 1.2\text{ s} = 3,000\text{ concurrent resources demanded}$.
+>   2. Because $3,000 > 1,000$ (`ResourceCeiling`), the saturation queue grows at $+2,000\text{ items/sec}$, exhausting host capacity in $< 2\text{ seconds}$.
+> - **What-If Sensitivity**: Reduce `DegradedHoldTimeMs` from `1200ms` to `4ms` via the Principal Refactor below — concurrency drops to $2,500 \times 0.004 = 10$ ($1.0\%$ utilization)!
+
+<!-- TELEMETRY_WIDGET: title="01-Incident-Liveness-Death-Spiral" metric1="Primary Latency (ms)" metric2="Resource Saturation (%)" threshold="Critical SLA Ceiling" -->
+
+---
+
 ## 🔍 2. Diagnostic Investigation (Your Detective Turn)
 
 Before scrolling to the solution, inspect these 3 snippets found in the codebase:
@@ -87,6 +100,9 @@ public class CatalogCache
 ```
 
 ---
+
+
+<!-- PREDICT_GATE: Commit your root-cause hypothesis from the diagnostic evidence above before unlocking Section 3 (Deep Engine Internals). -->
 
 ## ⚙️ 3. Deep Internals & Root Cause Analysis
 
@@ -194,12 +210,12 @@ builder.Host.UseDefaultServiceProvider((context, options) =>
 
 ### 📊 The Scoreboard: Before vs. After
 
-| Metric | Before (The Incident) | After (The Principal Architecture) |
-|---|---|---|
-| **Pod Recovery under DB Spike** | 100% Pod Cascade Crash Loop | 0 Pod Crashes; Pods temporarily drop out of LB pool |
-| **Active TCP Sockets under 28k RPS** | 64,800+ (`TIME_WAIT` Exhaustion) | **180 Stable Pooled Sockets** |
-| **Outbound Payment Latency (p99)** | Timed out / Socket Error (99) | **42 ms** |
-| **DbContext Concurrency Exceptions** | 1,420 / minute | **0 (Zero)** |
+| Metric | Before (The Incident) | After (The Principal Architecture) | Validation & Rollback Procedure |
+|---|---|---|---|
+| **Pod Recovery under DB Spike** | 100% Pod Cascade Crash Loop | 0 Pod Crashes; Pods temporarily drop out of LB pool | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Active TCP Sockets under 28k RPS** | 64,800+ (`TIME_WAIT` Exhaustion) | **180 Stable Pooled Sockets** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **Outbound Payment Latency (p99)** | Timed out / Socket Error (99) | **42 ms** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
+| **DbContext Concurrency Exceptions** | 1,420 / minute | **0 (Zero)** | Validate in canary shadow traffic for 30m; rollback via feature flag if p99 regresses > 10%. |
 
 ---
 
@@ -228,6 +244,15 @@ Practice answering these 3 aggressive questions as if you were in front of the A
 
 **The Principal Defense**:
 > *"Killing an app container because its database is down is an anti-pattern known as a **Fate-Sharing Death Spiral**. If the database has a momentary 10-second blip or lock freeze, killing 64 pods means that when the database recovers, all 64 pods will restart simultaneously, storming the database with 64 concurrent connection pool initializations, cold caches, and authentication handshakes, knocking the database down again. By delegating database health to the **Readiness probe**, pods remain alive and warm, stop accepting traffic until the database recovers, and resume servicing requests instantly without a thundering herd restart."*
+
+---
+
+
+### Question (The FinOps / Cost Axis):
+> *"A vendor or team proposed throwing 10x hardware / enterprise cluster licensing ($18,000/month) at this problem instead of refactoring the architecture. Defend the 80%-good / Principal mechanical fix."*
+
+**The Principal Defense**:
+> *"Scaling hardware vertically against a non-linear mechanical bottleneck (lock escalation, LOH fragmentation, or $O(N^2)$ scans) burns $216,000/year while only delaying the crash by minutes under peak load. The refactoring above eliminates the root allocation/locking contention at **$0/month additional infrastructure cost**, improving efficiency by two orders of magnitude."*
 
 ---
 
